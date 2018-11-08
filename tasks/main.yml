@@ -55,103 +55,115 @@
 
 #- fail:
 
-# This block is for sites whose version isn't the latest.
-- block:
-  - name: Back up the databases
-    mysql_db:
-      state: dump
-      name: "{{ item.item.value.crm_db_name }}"
-      target: "{{ item.item.value.webroot }}/../sql-dumps/{{ item.item.value.crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    loop_control:
-      label: "{{ item.item.key }}"
+- name: Check if db already exists
+  stat:
+    path: "{{ item.item.value.webroot }}/../sql-dumps/{{ item.item.value.crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  loop_control:
+    label: "{{ item.item.key }}"
+  register: existing_backup
+  when: item.skipped is not defined
 
-  - name: Unarchive the files into civiroot (.tar.gz)
-    unarchive:
-      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.tar.gz"
-      dest: "{{ item.item.value.civiroot }}/.."
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    when: item.item.value.cms != 'WordPress'
-    loop_control:
-      label: "{{ item.item.key }}"
+- name: Back up the databases
+  mysql_db:
+    state: dump
+    name: "{{ item.item.item.value.crm_db_name }}"
+    target: "{{ item.item.item.value.webroot }}/../sql-dumps/{{ item.item.item.value.crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+  with_items: "{{ existing_backup.results }}"
+  become: yes
+  loop_control:
+    label: "{{ item.item.item.key }}"
+  when: item.stat is defined and item.stat.exists == false
 
-  - name: Unarchive the files into civiroot (.zip)
-    unarchive:
-      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.zip"
-      dest: "{{ item.item.value.civiroot }}/../.."
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    when: item.item.value.cms == 'WordPress'
-    loop_control:
-      label: "{{ item.item.key }}"
+- name: Unarchive the files into civiroot (.tar.gz)
+  unarchive:
+    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.tar.gz"
+    dest: "{{ item.item.value.civiroot }}/.."
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  when: item.item.value.cms != 'WordPress' and item.skipped is not defined
+  loop_control:
+    label: "{{ item.item.key }}"
 
-  # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
-  - name: Upgrade the Civi DB
-    command: "cv upgrade:db --cwd {{ item.item.value.webroot }}"
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    loop_control:
-      label: "{{ item.item.key }}"
+- name: Unarchive the files into civiroot (.zip)
+  unarchive:
+    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.zip"
+    dest: "{{ item.item.value.civiroot }}/../.."
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  when: item.item.value.cms == 'WordPress' and item.skipped is not defined
+  loop_control:
+    label: "{{ item.item.key }}"
 
-  - name: git config - user/email
-    blockinfile:
-      path: "{{ item.item.value.webroot }}/.git/config"
-      block: |
-        [user]
-          email = none@megaphonetech.com
-          name = {{ item.item.value.run_as_user }} on {{ item.item.key }}
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    loop_control:
-      label: "{{ item.item.key }}"
-
-  - name: git add Civi upgrade
-    command: git add -v -A
-    args:
-      chdir: "{{ item.item.value.civiroot }}"
-    register: add_result
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    changed_when: add_result.stdout != ''
-    failed_when: add_result.stderr != ''
-    loop_control:
-      label: "{{ item.item.key }}"
-
-  - name: git commit Civi upgrade
-    command: "git commit -m 'CiviCRM {{ civi_ver.content }}'"
-    args:
-      chdir: "{{ item.item.value.civiroot }}"
-    register: commit_result
-    with_items: "{{ installed_version.results }}"
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    changed_when: commit_result.rc == 0
-    failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
-    loop_control:
-      label: "{{ item.item.key }}"
-
-  - name: git push
-    command: git push --set-upstream origin master
-    args:
-      chdir: "{{ item.item.value.webroot }}"
-    register: push_result
-    become: yes
-    become_user: "{{ item.item.value.run_as_user }}"
-    with_items: "{{ installed_version.results }}"
-    when: item.item.value.internal_repo == "1" and (item.item.value.git_repo_push_url is search("ssh://"))
-    changed_when: push_result.rc == 0
-    failed_when: not(push_result.rc == 0)
-    loop_control:
-      label: "{{ item.item.key }}"
-
+# This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
+- name: Upgrade the Civi DB
+  command: "cv upgrade:db --cwd {{ item.item.value.webroot }}"
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  loop_control:
+    label: "{{ item.item.key }}"
   when: item.skipped is not defined and item.stdout != civi_ver.content
+
+- name: git config - user/email
+  blockinfile:
+    path: "{{ item.item.value.webroot }}/.git/config"
+    block: |
+      [user]
+        email = none@megaphonetech.com
+        name = {{ item.item.value.run_as_user }} on {{ item.item.key }}
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.skipped is not defined
+
+- name: git add Civi upgrade
+  command: git add -v -A
+  args:
+    chdir: "{{ item.item.value.civiroot }}"
+  register: add_result
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  changed_when: add_result.stdout != ''
+  failed_when: add_result.stderr != ''
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.skipped is not defined
+
+- name: git commit Civi upgrade
+  command: "git commit -m 'CiviCRM {{ civi_ver.content }}'"
+  args:
+    chdir: "{{ item.item.value.civiroot }}"
+  register: commit_result
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  changed_when: commit_result.rc == 0
+  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.skipped is not defined
+
+- name: git push
+  command: git push --set-upstream origin master
+  args:
+    chdir: "{{ item.item.value.webroot }}"
+  register: push_result
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  with_items: "{{ installed_version.results }}"
+  when: item.item.value.internal_repo == "1" and (item.item.value.git_repo_push_url is search("ssh://")) and item.skipped is not defined
+  changed_when: push_result.rc == 0
+  failed_when: not(push_result.rc == 0)
+  loop_control:
+    label: "{{ item.item.key }}"
+
 
 #- name: Get a list of plugins that need updating
 #  script: helpers/upgradeable-civi.php
