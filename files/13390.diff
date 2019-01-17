@@ -1,0 +1,21 @@
+diff --git a/CRM/Mailing/BAO/Mailing.php b/CRM/Mailing/BAO/Mailing.php
+index 9edbbb62454..927fdeec441 100644
+--- a/CRM/Mailing/BAO/Mailing.php
++++ b/CRM/Mailing/BAO/Mailing.php
+@@ -2179,12 +2179,10 @@ public static function &report($id, $skipDetails = FALSE, $isSMS = FALSE) {
+     );
+ 
+     $actionLinks = array(CRM_Core_Action::VIEW => array('name' => ts('Report')));
+-    if (CRM_Core_Permission::check('view all contacts')) {
+-      $actionLinks[CRM_Core_Action::ADVANCED] = array(
+-        'name' => ts('Advanced Search'),
+-        'url' => 'civicrm/contact/search/advanced',
+-      );
+-    }
++    $actionLinks[CRM_Core_Action::ADVANCED] = array(
++      'name' => ts('Advanced Search'),
++      'url' => 'civicrm/contact/search/advanced',
++    );
+     $action = array_sum(array_keys($actionLinks));
+ 
+     $report['event_totals']['actionlinks'] = array();

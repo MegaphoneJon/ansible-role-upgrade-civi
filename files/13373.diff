@@ -1,0 +1,80 @@
+diff --git a/CRM/ACL/BAO/ACL.php b/CRM/ACL/BAO/ACL.php
+index a2ac22df250..5e84ab8f4b0 100644
+--- a/CRM/ACL/BAO/ACL.php
++++ b/CRM/ACL/BAO/ACL.php
+@@ -870,6 +870,10 @@ public static function group(
+       return Civi::$statics[__CLASS__]['permissioned_groups'][$userCacheKey];
+     }
+ 
++    if ($allGroups == NULL) {
++      $allGroups = CRM_Contact_BAO_Contact::buildOptions('group_id', NULL, ['onlyActive' => FALSE]);
++    }
++
+     $acls = CRM_ACL_BAO_Cache::build($contactID);
+ 
+     $ids = array();
+diff --git a/CRM/Contact/BAO/Group.php b/CRM/Contact/BAO/Group.php
+index 00dead650a1..031bf1513f8 100644
+--- a/CRM/Contact/BAO/Group.php
++++ b/CRM/Contact/BAO/Group.php
+@@ -966,18 +966,20 @@ public static function getGroupList(&$params) {
+         }
+         $values[$object->id]['group_type'] = implode(', ', $types);
+       }
+-      $values[$object->id]['action'] = CRM_Core_Action::formLink($newLinks,
+-        $action,
+-        array(
+-          'id' => $object->id,
+-          'ssid' => $object->saved_search_id,
+-        ),
+-        ts('more'),
+-        FALSE,
+-        'group.selector.row',
+-        'Group',
+-        $object->id
+-      );
++      if ($action) {
++        $values[$object->id]['action'] = CRM_Core_Action::formLink($newLinks,
++          $action,
++          array(
++            'id' => $object->id,
++            'ssid' => $object->saved_search_id,
++          ),
++          ts('more'),
++          FALSE,
++          'group.selector.row',
++          'Group',
++          $object->id
++        );
++      }
+ 
+       // If group has children, add class for link to view children
+       $values[$object->id]['is_parent'] = FALSE;
+diff --git a/CRM/Contact/BAO/GroupContact.php b/CRM/Contact/BAO/GroupContact.php
+index 20290e2c690..9bb1dc439a5 100644
+--- a/CRM/Contact/BAO/GroupContact.php
++++ b/CRM/Contact/BAO/GroupContact.php
+@@ -787,9 +787,8 @@ public static function bulkAddContactsToGroup(
+    * @return array|bool
+    */
+   public static function buildOptions($fieldName, $context = NULL, $props = array()) {
+-    $params = array();
+ 
+-    $options = CRM_Core_PseudoConstant::get(__CLASS__, $fieldName, $params, $context);
++    $options = CRM_Core_PseudoConstant::get(__CLASS__, $fieldName, $props, $context);
+ 
+     // Sort group list by hierarchy
+     // TODO: This will only work when api.entity is "group_contact". What about others?
+diff --git a/CRM/Core/PseudoConstant.php b/CRM/Core/PseudoConstant.php
+index 07606807920..fb59a3c5f86 100644
+--- a/CRM/Core/PseudoConstant.php
++++ b/CRM/Core/PseudoConstant.php
+@@ -499,7 +499,7 @@ public static function getOptionEditUrl($fieldSpec) {
+   }
+ 
+   /**
+-   * DEPRECATED generic populate method.
++   * @deprecated generic populate method.
+    * All pseudoconstant functions that use this method are also @deprecated
+    *
+    * The static array $var is populated from the db

@@ -150,6 +150,56 @@
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
+- name: Patch core#580, PR#13373.  Current status is OPEN
+  patch:
+    src: "{{role_path}}/files/13373.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Patch core#609, PR#13390.  Current status is OPEN
+  patch:
+    src: "{{role_path}}/files/13390.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: git add Civi patches
+  command: git add -v -A
+  args:
+    chdir: "{{ item.item.value.civiroot }}"
+  register: add_result
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  changed_when: add_result.stdout != ''
+  failed_when: add_result.stderr != ''
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.skipped is not defined
+
+- name: git commit Civi patches
+  command: "git commit -m 'Apply my patches atop CiviCRM {{ civi_ver.content }}'"
+  args:
+    chdir: "{{ item.item.value.civiroot }}"
+  register: commit_result
+  with_items: "{{ installed_version.results }}"
+  become: yes
+  become_user: "{{ item.item.value.run_as_user }}"
+  changed_when: commit_result.rc == 0
+  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.skipped is not defined
+
 - name: git push
   command: git push --set-upstream origin master
   args:
