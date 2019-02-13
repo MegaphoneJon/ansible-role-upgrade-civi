@@ -172,6 +172,17 @@
   loop_control:
     label: "{{ item.key }}"
 
+- name: Patch membership#9, PR#13553.  Current status is OPEN
+  patch:
+    src: "{{role_path}}/files/13553.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
 - name: git add Civi patches
   command: git add -v -A
   args:
