@@ -145,7 +145,7 @@
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
   changed_when: commit_result.rc == 0
-  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+  failed_when: 'commit_result != 0 and not "nothing to commit, working directory clean" in commit_result.stdout_lines' 
   loop_control:
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
