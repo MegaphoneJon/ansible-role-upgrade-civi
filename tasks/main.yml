@@ -100,7 +100,7 @@
 
 # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
 - name: Upgrade the Civi DB
-  command: "cv upgrade:db --cwd {{ item.item.value.webroot }}"
+  command: "cv -n upgrade:db --cwd {{ item.item.value.webroot }}"
   with_items: "{{ installed_version.results }}"
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
@@ -145,21 +145,10 @@
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
   changed_when: commit_result.rc == 0
-  failed_when: 'commit_result != 0 and not "nothing to commit, working directory clean" in commit_result.stdout_lines' 
+  failed_when: 'commit_result.rc != 0 and not "nothing to commit, working directory clean" in commit_result.stdout_lines' 
   loop_control:
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
-
-- name: Patch core#580, PR#13373.  Current status is MERGED TO 5.12
-  patch:
-    src: "{{role_path}}/files/13373.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
 
 - name: Patch membership#9, PR#13553.  Current status is OPEN (not in 5.12rc)
   patch:
