@@ -145,14 +145,14 @@
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
   changed_when: commit_result.rc == 0
-  failed_when: 'commit_result.rc != 0 and not "nothing to commit, working directory clean" in commit_result.stdout_lines' 
+  failed_when: 'commit_result.rc != 0 and not "nothing to commit, working tree clean" in commit_result.stdout_lines' 
   loop_control:
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
-- name: Patch membership#9, PR#13553.  Current status is OPEN (equivalent in 5.14, ok to close then)
+- name: Patch membership#9, PR#14088.  Current status is OPEN (in 5.14, ok to close then)
   patch:
-    src: "{{role_path}}/files/13553.diff"
+    src: "{{role_path}}/files/14088.diff"
     basedir: "{{ item.value.civiroot }}"
     strip: 1
   with_dict: "{{ sites }}"
