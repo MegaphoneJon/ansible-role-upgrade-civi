@@ -150,7 +150,7 @@
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
-- name: Patch membership#9, PR#13553.  Current status is OPEN (not in 5.12rc)
+- name: Patch membership#9, PR#13553.  Current status is OPEN (equivalent in 5.14, ok to close then)
   patch:
     src: "{{role_path}}/files/13553.diff"
     basedir: "{{ item.value.civiroot }}"
