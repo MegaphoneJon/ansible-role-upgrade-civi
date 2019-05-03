@@ -122,34 +122,6 @@
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
-- name: git add Civi upgrade
-  command: git add -v -A
-  args:
-    chdir: "{{ item.item.value.civiroot }}"
-  register: add_result
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  changed_when: add_result.stdout != ''
-  failed_when: add_result.stderr != ''
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined
-
-- name: git commit Civi upgrade
-  command: "git commit -m 'CiviCRM {{ civi_ver.content }}'"
-  args:
-    chdir: "{{ item.item.value.civiroot }}"
-  register: commit_result
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  changed_when: commit_result.rc == 0
-  failed_when: 'commit_result.rc != 0 and not "nothing to commit, working tree clean" in commit_result.stdout_lines' 
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined
-
 - name: Patch membership#9, PR#14088.  Current status is OPEN (in 5.14, ok to close then)
   patch:
     src: "{{role_path}}/files/14088.diff"
@@ -176,7 +148,7 @@
   when: item.skipped is not defined
 
 - name: git commit Civi patches
-  command: "git commit -m 'Apply my patches atop CiviCRM {{ civi_ver.content }}'"
+  command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
   args:
     chdir: "{{ item.item.value.civiroot }}"
   register: commit_result
