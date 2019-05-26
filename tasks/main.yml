@@ -122,6 +122,17 @@
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
+- name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.15)
+  patch:
+    src: "{{role_path}}/files/14339.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
 - name: Patch membership#9, PR#14088.  Current status is OPEN (in 5.14, ok to close then)
   patch:
     src: "{{role_path}}/files/14088.diff"

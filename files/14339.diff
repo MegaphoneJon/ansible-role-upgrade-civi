@@ -1,0 +1,161 @@
+diff --git a/CRM/Contact/BAO/Relationship.php b/CRM/Contact/BAO/Relationship.php
+index 2fc3d2629d8..d1fa2976427 100644
+--- a/CRM/Contact/BAO/Relationship.php
++++ b/CRM/Contact/BAO/Relationship.php
+@@ -2280,4 +2280,31 @@ public static function isCurrentEmployerNeedingToBeCleared($params, $relationshi
+     return FALSE;
+   }
+ 
++  /**
++   * Get Relationship Contacts array for checking if contact can be modified.
++   *
++   * @param array $params
++   *
++   * @return array
++   *   list of contact ids.
++   */
++  public static function getRelationshipContacts($params) {
++    $cids = [];
++    $relationshipDetails = NULL;
++    if (!empty($params['id'])) {
++      $relationshipDetails = self::getRelationshipByID($params['id']);
++    }
++
++    foreach (['contact_id_a', 'contact_id_b'] as $field) {
++      if (!empty($params[$field])) {
++        $cids[] = $params[$field];
++      }
++      if ($relationshipDetails && !empty($relationshipDetails->$field)) {
++        $cids[] = $relationshipDetails->$field;
++      }
++    }
++
++    return $cids;
++  }
++
+ }
+diff --git a/CRM/Core/Permission.php b/CRM/Core/Permission.php
+index d1ed8ea0559..f782d63dd47 100644
+--- a/CRM/Core/Permission.php
++++ b/CRM/Core/Permission.php
+@@ -999,6 +999,8 @@ public static function getEntityActionPermissions() {
+     $permissions['website'] = $permissions['address'];
+     $permissions['im'] = $permissions['address'];
+     $permissions['open_i_d'] = $permissions['address'];
++    $permissions['relationship'] = $permissions['address'];
++    $permissions['group_contact'] = $permissions['address'];
+ 
+     // Also managed by ACLs - CRM-19448
+     $permissions['entity_tag'] = ['default' => []];
+@@ -1012,20 +1014,6 @@ public static function getEntityActionPermissions() {
+       'update' => ['access CiviCRM'],
+     ];
+ 
+-    //relationship permissions
+-    $permissions['relationship'] = [
+-      // get is managed by BAO::addSelectWhereClause
+-      'get' => [],
+-      'delete' => [
+-        'access CiviCRM',
+-        'edit all contacts',
+-      ],
+-      'default' => [
+-        'access CiviCRM',
+-        'edit all contacts',
+-      ],
+-    ];
+-
+     // CRM-17741 - Permissions for RelationshipType.
+     $permissions['relationship_type'] = [
+       'get' => [
+@@ -1221,17 +1209,6 @@ public static function getEntityActionPermissions() {
+     $permissions['group_nesting'] = $permissions['group'];
+     $permissions['group_organization'] = $permissions['group'];
+ 
+-    //Group Contact permission
+-    $permissions['group_contact'] = [
+-      'get' => [
+-        'access CiviCRM',
+-      ],
+-      'default' => [
+-        'access CiviCRM',
+-        'edit all contacts',
+-      ],
+-    ];
+-
+     // CiviMail Permissions
+     $civiMailBasePerms = [
+       // To get/preview/update, one must have least one of these perms:
+diff --git a/api/v3/GroupContact.php b/api/v3/GroupContact.php
+index e36fed2e5a8..5a459a9fc55 100644
+--- a/api/v3/GroupContact.php
++++ b/api/v3/GroupContact.php
+@@ -123,6 +123,13 @@ function _civicrm_api3_group_contact_create_spec(&$params) {
+  *   Information about operation results
+  */
+ function civicrm_api3_group_contact_create($params) {
++
++  // Check if contact can be modified.
++  _civicrm_api3_check_edit_permissions(
++    _civicrm_api3_get_BAO(__FUNCTION__),
++    $params
++  );
++
+   // Nonstandard bao - doesn't accept ID as a param, so convert id to group_id + contact_id
+   if (!empty($params['id'])) {
+     $getParams = ['id' => $params['id']];
+diff --git a/api/v3/Relationship.php b/api/v3/Relationship.php
+index d08889cd896..d0e13f00a65 100644
+--- a/api/v3/Relationship.php
++++ b/api/v3/Relationship.php
+@@ -74,6 +74,12 @@ function civicrm_api3_relationship_delete($params) {
+     return civicrm_api3_create_error('Invalid value for relationship ID');
+   }
+ 
++  // Check if contact can be modified.
++  _civicrm_api3_check_edit_permissions(
++    _civicrm_api3_get_BAO(__FUNCTION__),
++    $params
++  );
++
+   $relationBAO = new CRM_Contact_BAO_Relationship();
+   $relationBAO->id = $params['id'];
+   if (!$relationBAO->find(TRUE)) {
+diff --git a/api/v3/utils.php b/api/v3/utils.php
+index 1e5d3836401..6a1ae4473eb 100644
+--- a/api/v3/utils.php
++++ b/api/v3/utils.php
+@@ -2538,11 +2538,30 @@ function _civicrm_api3_check_edit_permissions($bao_name, $params) {
+     'CRM_Core_BAO_IM',
+     'CRM_Core_BAO_Website',
+     'CRM_Core_BAO_OpenID',
++    'CRM_Contact_BAO_GroupContact',
++    'CRM_Contact_BAO_Relationship',
+   ];
++
+   if (!empty($params['check_permissions']) && in_array($bao_name, $contactEntities)) {
+-    $cid = !empty($params['contact_id']) ? $params['contact_id'] : CRM_Core_DAO::getFieldValue($bao_name, $params['id'], 'contact_id');
+-    if (!CRM_Contact_BAO_Contact_Permission::allow($cid, CRM_Core_Permission::EDIT)) {
+-      throw new \Civi\API\Exception\UnauthorizedException('Permission denied to modify contact record');
++    // Relationship table has 2 contact fieds contact_id_a and contact_id_b
++    // Hence we need to fetch those contact id separately.
++    if ($bao_name == 'CRM_Contact_BAO_Relationship') {
++      $cids = $bao_name::getRelationshipContacts($params);
++    }
++    else {
++      $cids = [];
++      if (!empty($params['contact_id'])) {
++        $cids[] = $params['contact_id'];
++      }
++      if (!empty($params['id'])) {
++        $cids[] = CRM_Core_DAO::getFieldValue($bao_name, $params['id'], 'contact_id');
++      }
++    }
++
++    foreach (array_unique($cids) as $cid) {
++      if (!CRM_Contact_BAO_Contact_Permission::allow($cid, CRM_Core_Permission::EDIT)) {
++        throw new \Civi\API\Exception\UnauthorizedException('Permission denied to modify contact record');
++      }
+     }
+   }
+ }
