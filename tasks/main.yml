@@ -80,6 +80,7 @@
   unarchive:
     src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.tar.gz"
     dest: "{{ item.item.value.civiroot }}/.."
+    creates: "{{ item.item.value.civiroot }}/release-notes/{{ civi_ver.content }}.md"
   with_items: "{{ installed_version.results }}"
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
@@ -91,6 +92,7 @@
   unarchive:
     src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.zip"
     dest: "{{ item.item.value.civiroot }}/../.."
+    creates: "{{ item.item.value.civiroot }}/release-notes/{{ civi_ver.content }}.md"
   with_items: "{{ installed_version.results }}"
   become: yes
   become_user: "{{ item.item.value.run_as_user }}"
@@ -144,7 +146,7 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: git add Civi patches
+- name: git add Civi + patches
   command: git add -v -A
   args:
     chdir: "{{ item.item.value.civiroot }}"
@@ -158,7 +160,7 @@
     label: "{{ item.item.key }}"
   when: item.skipped is not defined
 
-- name: git commit Civi patches
+- name: git commit Civi + patches
   command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
   args:
     chdir: "{{ item.item.value.civiroot }}"
