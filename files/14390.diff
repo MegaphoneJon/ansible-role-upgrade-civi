@@ -1,0 +1,13 @@
+diff --git a/CRM/Contact/BAO/Contact.php b/CRM/Contact/BAO/Contact.php
+index cf540790ed1..0069c6b9254 100644
+--- a/CRM/Contact/BAO/Contact.php
++++ b/CRM/Contact/BAO/Contact.php
+@@ -2330,7 +2330,7 @@ public static function formatProfileContactParams(
+ 
+           // if auth source is not checksum / login && $value is blank, do not proceed - CRM-10128
+           if (($session->get('authSrc') & (CRM_Core_Permission::AUTH_SRC_CHECKSUM + CRM_Core_Permission::AUTH_SRC_LOGIN)) == 0 &&
+-            ($value == '' || !isset($value))
++            ($value == '' || !isset($value) || empty($value))
+           ) {
+             continue;
+           }
