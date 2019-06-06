@@ -194,7 +194,7 @@
   become_user: "{{ item.item.value.run_as_user }}"
   with_items: "{{ installed_version.results }}"
   when: item.item.value.internal_repo == "1" and (item.item.value.git_repo_push_url is search("ssh://")) and item.skipped is not defined
-  changed_when: push_result.rc == 0
+  changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
   failed_when: not(push_result.rc == 0)
   loop_control:
     label: "{{ item.item.key }}"
