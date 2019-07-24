@@ -1,0 +1,28 @@
+diff --git a/wp-content/plugins/civicrm/civicrm/CRM/Contribute/BAO/Contribution.php b/wp-content/plugins/civicrm/civicrm/CRM/Contribute/BAO/Contribution.php
+index 5ca5894dc..c7d68cb08 100644
+--- a/wp-content/plugins/civicrm/civicrm/CRM/Contribute/BAO/Contribution.php
++++ b/wp-content/plugins/civicrm/civicrm/CRM/Contribute/BAO/Contribution.php
+@@ -5383,13 +5383,17 @@ LEFT JOIN  civicrm_contribution on (civicrm_contribution.contact_id = civicrm_co
+    * @throws \CiviCRM_API3_Exception
+    */
+   public static function updateMembershipBasedOnCompletionOfContribution($contribution, $primaryContributionID, $changeDate) {
+-    $memberships = self::getRelatedMemberships($contribution->id);
+-    foreach ($memberships as $membership) {
++    $contribution->loadRelatedMembershipObjects();
++    if (empty($contribution->_relatedObjects['membership'])) {
++      return;
++    }
++    $memberships = $contribution->_relatedObjects['membership'];
++    foreach ($memberships as $membershipTypeIdKey => $membership) {
+       $membershipParams = [
+-        'id' => $membership['id'],
+-        'contact_id' => $membership['contact_id'],
+-        'is_test' => $membership['is_test'],
+-        'membership_type_id' => $membership['membership_type_id'],
++        'id' => $membership->id,
++        'contact_id' => $membership->contact_id,
++        'is_test' => $membership->is_test,
++        'membership_type_id' => $membership->membership_type_id,
+         'membership_activity_status' => 'Completed',
+       ];
+ 
