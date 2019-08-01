@@ -146,17 +146,6 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Patch reporting#15 - no PR because no test. Current status is OPEN.
-  patch:
-    src: "{{role_path}}/files/reporting-15.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
 - name: Patch membership#13 - no PR because not sure how to fix permanently yet.  Current status is OPEN
   patch:
     src: "{{role_path}}/files/membership-13.diff"
@@ -171,7 +160,7 @@
 - name: Patch PHPWord to allow spaces in filenames
   patch:
     src: "{{role_path}}/files/1674.diff"
-    basedir: "{{ item.value.civiroot }}/civicrm/vendor/phpoffice/phpword"
+    basedir: "{{ item.value.civiroot }}/vendor/phpoffice/phpword"
     strip: 1
   with_dict: "{{ sites }}"
   become: yes
