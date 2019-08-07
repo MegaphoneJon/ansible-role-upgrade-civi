@@ -135,6 +135,17 @@
   loop_control:
     label: "{{ item.key }}"
 
+- name: Patch reporting#18, PR#14982.  Current status is OPEN
+  patch:
+    src: "{{role_path}}/files/14982.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
 - name: Patch core#1006, PR#14390.  Current status is OPEN
   patch:
     src: "{{role_path}}/files/14390.diff"
@@ -182,6 +193,17 @@
 - name: Patch PR#14840, contact subtype in search views.  Current status is OPEN
   patch:
     src: "{{role_path}}/files/14840.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Patch PR#14480/core#533, CiviEvent template fix for custom fields
+  patch:
+    src: "{{role_path}}/files/14480.diff"
     basedir: "{{ item.value.civiroot }}"
     strip: 1
   with_dict: "{{ sites }}"

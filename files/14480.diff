@@ -1,0 +1,131 @@
+diff --git a/CRM/Core/DAO.php b/CRM/Core/DAO.php
+index f4593a4bd57..a54d1a1ca49 100644
+--- a/CRM/Core/DAO.php
++++ b/CRM/Core/DAO.php
+@@ -1599,11 +1599,14 @@ public static function freeResult($ids = NULL) {
+    * @param string $blockCopyOfDependencies
+    *   Fields that you want to block from.
+    *   getting copied
++   * @param bool $blockCopyofCustomValues
++   *   Case when you don't want to copy the custom values set in a
++   *   template as it will override/ignore the submitted custom values
+    *
+    * @return CRM_Core_DAO|bool
+    *   the newly created copy of the object. False if none created.
+    */
+-  public static function copyGeneric($daoName, $criteria, $newData = NULL, $fieldsFix = NULL, $blockCopyOfDependencies = NULL) {
++  public static function copyGeneric($daoName, $criteria, $newData = NULL, $fieldsFix = NULL, $blockCopyOfDependencies = NULL, $blockCopyofCustomValues = FALSE) {
+     $object = new $daoName();
+     $newObject = FALSE;
+     if (!$newData) {
+@@ -1671,7 +1674,9 @@ public static function copyGeneric($daoName, $criteria, $newData = NULL, $fields
+         }
+       }
+       $newObject->save();
+-      $newObject->copyCustomFields($object->id, $newObject->id);
++      if (!$blockCopyofCustomValues) {
++        $newObject->copyCustomFields($object->id, $newObject->id);
++      }
+       CRM_Utils_Hook::post('create', CRM_Core_DAO_AllCoreTables::getBriefName($daoName), $newObject->id, $newObject);
+     }
+ 
+diff --git a/CRM/Event/BAO/Event.php b/CRM/Event/BAO/Event.php
+index 2729d096938..89d8d909ada 100644
+--- a/CRM/Event/BAO/Event.php
++++ b/CRM/Event/BAO/Event.php
+@@ -946,11 +946,15 @@ public static function copy($id, $params = []) {
+       $fieldsFix['prefix']['is_show_location'] = 0;
+     }
+ 
++    $blockCopyOfCustomValue = (!empty($params['custom']));
++
+     $copyEvent = CRM_Core_DAO::copyGeneric('CRM_Event_DAO_Event',
+       ['id' => $id],
+       // since the location is sharable, lets use the same loc_block_id.
+       ['loc_block_id' => CRM_Utils_Array::value('loc_block_id', $eventValues)] + $params,
+-      $fieldsFix
++      $fieldsFix,
++      NULL,
++      $blockCopyOfCustomValue
+     );
+     CRM_Price_BAO_PriceSet::copyPriceSet('civicrm_event', $id, $copyEvent->id);
+     CRM_Core_DAO::copyGeneric('CRM_Core_DAO_UFJoin',
+@@ -991,6 +995,10 @@ public static function copy($id, $params = []) {
+ 
+     $copyEvent->save();
+ 
++    if ($blockCopyOfCustomValue) {
++      CRM_Core_BAO_CustomValueTable::store($params['custom'], 'civicrm_event', $copyEvent->id);
++    }
++
+     CRM_Utils_System::flushCache();
+     CRM_Utils_Hook::copy('Event', $copyEvent);
+ 
+diff --git a/CRM/Event/Form/ManageEvent/EventInfo.php b/CRM/Event/Form/ManageEvent/EventInfo.php
+index 31317c09aa8..db2d950951b 100644
+--- a/CRM/Event/Form/ManageEvent/EventInfo.php
++++ b/CRM/Event/Form/ManageEvent/EventInfo.php
+@@ -48,10 +48,11 @@ public function preProcess() {
+     parent::preProcess();
+     $this->assign('selectedChild', 'settings');
+ 
+-    if ($this->_id) {
+-      $this->assign('entityID', $this->_id);
++    $entityID = $this->_id ?: $this->_templateId;
++    if ($entityID) {
++      $this->assign('entityID', $entityID);
+       $eventType = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event',
+-        $this->_id,
++        $entityID,
+         'event_type_id'
+       );
+     }
+@@ -127,7 +128,6 @@ public function buildQuickForm() {
+     if ($this->_eventType) {
+       $this->assign('customDataSubType', $this->_eventType);
+     }
+-    $this->assign('entityId', $this->_id);
+ 
+     $this->_first = TRUE;
+     $this->applyFilter('__ALL__', 'trim');
+@@ -228,7 +228,7 @@ public static function formRule($values) {
+    * Process the form submission.
+    */
+   public function postProcess() {
+-    $params = $this->controller->exportValues($this->_name);
++    $params = array_merge($this->controller->exportValues($this->_name), $this->_submitValues);
+ 
+     //format params
+     $params['start_date'] = CRM_Utils_Array::value('start_date', $params);
+@@ -241,19 +241,23 @@ public function postProcess() {
+     $params['default_role_id'] = CRM_Utils_Array::value('default_role_id', $params, FALSE);
+     $params['id'] = $this->_id;
+ 
+-    $customFields = CRM_Core_BAO_CustomField::getFields('Event', FALSE, FALSE,
+-      CRM_Utils_Array::value('event_type_id', $params)
+-    );
+-    $params['custom'] = CRM_Core_BAO_CustomField::postProcess($params,
+-      $this->_id,
+-      'Event'
+-    );
+-
+     //merge params with defaults from templates
+     if (!empty($params['template_id'])) {
+       $params = array_merge(CRM_Event_BAO_Event::getTemplateDefaultValues($params['template_id']), $params);
++      foreach ($params as $key => $value) {
++        $customFieldInfo = CRM_Core_BAO_CustomField::getKeyID($key, TRUE);
++        if (!empty($customFieldInfo[1])) {
++          $params[str_replace($customFieldInfo[1], '-' . $customFieldInfo[1], $key)] = $value;
++          unset($params[$key]);
++        }
++      }
+     }
+ 
++    $params['custom'] = CRM_Core_BAO_CustomField::postProcess($params,
++      $this->_id,
++      'Event'
++    );
++
+     // now that we have the event’s id, do some more template-based stuff
+     if (!empty($params['template_id'])) {
+       $event = CRM_Event_BAO_Event::copy($params['template_id'], $params);
