@@ -201,17 +201,6 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Patch PR#14480/core#533, CiviEvent template fix for custom fields
-  patch:
-    src: "{{role_path}}/files/14480.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
 - name: git add Civi + patches
   command: git add -v -A
   args:
