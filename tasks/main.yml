@@ -146,9 +146,9 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Patch core#1006, PR#14390.  Current status is OPEN
+- name: Patch membership#14, PR#15206.  Detect lifetime memberships correctly.
   patch:
-    src: "{{role_path}}/files/14390.diff"
+    src: "{{role_path}}/files/15206.diff"
     basedir: "{{ item.value.civiroot }}"
     strip: 1
   with_dict: "{{ sites }}"
@@ -157,9 +157,20 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Patch membership#13 - no PR because not sure how to fix permanently yet.  Current status is OPEN
+- name: Patch membership#13, PR#15053.  Add debugging on the NWU issue.
   patch:
-    src: "{{role_path}}/files/membership-13.diff"
+    src: "{{role_path}}/files/15053.diff"
+    basedir: "{{ item.value.civiroot }}"
+    strip: 1
+  with_dict: "{{ sites }}"
+  become: yes
+  when: item.value.contract_type is search("Civi Maintenance")
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Patch core#1006, PR#14390.  Current status is OPEN
+  patch:
+    src: "{{role_path}}/files/14390.diff"
     basedir: "{{ item.value.civiroot }}"
     strip: 1
   with_dict: "{{ sites }}"
@@ -172,28 +183,6 @@
   patch:
     src: "{{role_path}}/files/1674.diff"
     basedir: "{{ item.value.civiroot }}/vendor/phpoffice/phpword"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
-- name: Patch PR#14658, render tokens of option value lists by label, not value.  Current status is OPEN
-  patch:
-    src: "{{role_path}}/files/14658.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
-- name: Patch PR#14840, contact subtype in search views.  Current status is OPEN
-  patch:
-    src: "{{role_path}}/files/14840.diff"
-    basedir: "{{ item.value.civiroot }}"
     strip: 1
   with_dict: "{{ sites }}"
   become: yes

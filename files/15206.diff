@@ -1,0 +1,76 @@
+diff --git a/CRM/Contribute/Form/ContributionBase.php b/CRM/Contribute/Form/ContributionBase.php
+index 0399436fd8c..4f9c1ecb9a2 100644
+--- a/CRM/Contribute/Form/ContributionBase.php
++++ b/CRM/Contribute/Form/ContributionBase.php
+@@ -1196,6 +1196,7 @@ protected function buildMembershipBlock(
+             }
+           }
+         }
++        $currentMemberships = CRM_Member_BAO_Membership::getAllContactMembership($cid, $isTest);
+         foreach ($membershipTypeIds as $value) {
+           $memType = $membershipTypeValues[$value];
+           if ($selectedMembershipTypeID != NULL) {
+@@ -1234,30 +1235,16 @@ protected function buildMembershipBlock(
+               $memType['id'], $javascriptMethod
+             );
+             if ($cid) {
+-              $membership = new CRM_Member_DAO_Membership();
+-              $membership->contact_id = $cid;
+-              $membership->membership_type_id = $memType['id'];
+-
+-              //show current membership, skip pending and cancelled membership records,
+-              //because we take first membership record id for renewal
+-              $membership->whereAdd('status_id != 5 AND status_id !=6');
+-
+-              if (!is_null($isTest)) {
+-                $membership->is_test = $isTest;
+-              }
+-
+-              //CRM-4297
+-              $membership->orderBy('end_date DESC');
+-
+-              if ($membership->find(TRUE)) {
+-                if (!$membership->end_date) {
++              if (isset($currentMemberships[$memType['id']])) {
++                $membership = $currentMemberships[$memType['id']];
++                if ($membership['join_date'] && !$membership['end_date']) {
+                   unset($radio[$memType['id']]);
+                   $this->assign('islifetime', TRUE);
+                   continue;
+                 }
+                 $this->assign('renewal_mode', TRUE);
+-                $this->_currentMemberships[$membership->membership_type_id] = $membership->membership_type_id;
+-                $memType['current_membership'] = $membership->end_date;
++                $this->_currentMemberships[$membership['membership_type_id']] = $membership['membership_type_id'];
++                $memType['current_membership'] = $membership['end_date'];
+                 if (!$endDate) {
+                   $endDate = $memType['current_membership'];
+                   $this->_defaultMemTypeId = $memType['id'];
+diff --git a/CRM/Member/BAO/Membership.php b/CRM/Member/BAO/Membership.php
+index 2e22a1d8363..8d7324a387b 100644
+--- a/CRM/Member/BAO/Membership.php
++++ b/CRM/Member/BAO/Membership.php
+@@ -2407,7 +2407,11 @@ public static function getAllContactMembership($contactID, $isTest = FALSE, $onl
+ 
+     if ($onlyLifeTime) {
+       $dao->whereAdd('end_date IS NULL');
++      // Membership#14 - a canceled membership that was only ever pending can have no end date, but will also have no join date.
++      $dao->whereAdd('join_date IS NOT NULL');
+     }
++    //CRM-4297
++    $dao->orderBy('end_date DESC');
+ 
+     $dao->find();
+     while ($dao->fetch()) {
+diff --git a/CRM/Price/BAO/PriceSet.php b/CRM/Price/BAO/PriceSet.php
+index c7d9ebe7079..e59ab173b82 100644
+--- a/CRM/Price/BAO/PriceSet.php
++++ b/CRM/Price/BAO/PriceSet.php
+@@ -1095,6 +1095,7 @@ public static function applyACLFinancialTypeStatusToFeeBlock(&$feeBlock) {
+ 
+   /**
+    * Check the current Membership having end date null.
++   * FIXME: This function isn't buggy but should be consolidated with other functions that check for lifetime memberships.
+    *
+    * @param array $options
+    * @param int $userid
