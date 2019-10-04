@@ -13,7 +13,7 @@
   command: mysql {{ item.value.crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
   with_dict: "{{ sites }}"
   become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
+  when: item.value.contract_type is search("Civi Maintenance") and item.value.freeze_crm != "1"
   loop_control:
     label: "{{ item.key }}"
   register: installed_version
