@@ -157,17 +157,6 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Patch membership#13, PR#15053.  Add debugging on the NWU issue.
-  patch:
-    src: "{{role_path}}/files/15053.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
 - name: Patch core#1006, PR#14390.  Current status is OPEN
   patch:
     src: "{{role_path}}/files/14390.diff"
