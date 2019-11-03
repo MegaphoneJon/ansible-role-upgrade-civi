@@ -7,18 +7,6 @@
   run_once: true
   register: civi_ver
 
-# TODO: Check alternate URLs where my custom distmaker tarballs might exist
-
-- name: check installed CiviCRM version
-  command: mysql {{ item.value.crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance") and item.value.freeze_crm != "1"
-  loop_control:
-    label: "{{ item.key }}"
-  register: installed_version
-  changed_when: false
-
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
   local_action:
@@ -31,197 +19,155 @@
     - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
     - "civicrm-{{ civi_ver.content }}-wordpress.zip"
 
-# This whole idea is better saved for when we refactor sites into their own inventory.
-#- name: Find old database backups
-#  find:
-#    age: 1d
-#    path: "{{ item.item.value.webroot }}/../sql-dumps"
-#    patterns: "{{ item.item.value.crm_db_name }}.pre-*.sql.gz"
-#    age_stamp: ctime
-#  with_items: "{{ installed_version.results }}"
-#  loop_control:
-#    label: "{{ item.item.key }}"
-#  register: old_db_backups
+- block:
+  - name: check installed CiviCRM version
+    command: mysql {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
+    become: yes
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    register: installed_version
+    changed_when: false
 
-#- debug: var=item
-#  with_items: "{{ old_db_backups }}"
-  
+  - name: Find old database backups
+    find:
+      age: 1d
+      path: "{{ webroot }}/../sql-dumps"
+      patterns: "{{ crm_db_name }}.pre-*.sql.gz"
+      age_stamp: ctime
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    register: old_db_backups
 
-#- name: Delete old database backups
-#  file:
-#    path: "{{ item.item.value.webroot }}/../sql-dumps"
-#    state: absent
-#  with_items: "{{ old_db_backups.files }}"
+  - name: Delete old database backups
+    file:
+      path: "{{ item.path }}"
+      state: absent
+    with_items: "{{ old_db_backups.files }}"
+    when: old_db_backups.files is defined and old_db_backups.matched > 0
 
-#- fail:
+  - name: Check if db already exists
+    stat:
+      path: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+    become: yes
+    register: existing_backup
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
-- name: Check if db already exists
-  stat:
-    path: "{{ item.item.value.webroot }}/../sql-dumps/{{ item.item.value.crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  loop_control:
-    label: "{{ item.item.key }}"
-  register: existing_backup
-  when: item.skipped is not defined
+  - name: Back up the databases
+    mysql_db:
+      state: dump
+      name: "{{ crm_db_name }}"
+      target: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+    become: yes
+    when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
-- name: Back up the databases
-  mysql_db:
-    state: dump
-    name: "{{ item.item.item.value.crm_db_name }}"
-    target: "{{ item.item.item.value.webroot }}/../sql-dumps/{{ item.item.item.value.crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-  with_items: "{{ existing_backup.results }}"
-  become: yes
-  loop_control:
-    label: "{{ item.item.item.key }}"
-  when: item.stat is defined and item.stat.exists == false
+  - name: Unarchive the files into civiroot (.tar.gz)
+    unarchive:
+      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
+      dest: "{{ civiroot }}/.."
+      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: cms != 'WordPress' and contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
-- name: Unarchive the files into civiroot (.tar.gz)
-  unarchive:
-    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.tar.gz"
-    dest: "{{ item.item.value.civiroot }}/.."
-    creates: "{{ item.item.value.civiroot }}/release-notes/{{ civi_ver.content }}.md"
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  when: item.item.value.cms != 'WordPress' and item.skipped is not defined
-  loop_control:
-    label: "{{ item.item.key }}"
+  - name: Unarchive the files into civiroot (.zip)
+    unarchive:
+      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
+      dest: "{{ civiroot }}/../.."
+      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: cms == 'WordPress' and contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
-- name: Unarchive the files into civiroot (.zip)
-  unarchive:
-    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ item.item.value.cms|lower }}.zip"
-    dest: "{{ item.item.value.civiroot }}/../.."
-    creates: "{{ item.item.value.civiroot }}/release-notes/{{ civi_ver.content }}.md"
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  when: item.item.value.cms == 'WordPress' and item.skipped is not defined
-  loop_control:
-    label: "{{ item.item.key }}"
+  # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
+  - name: Upgrade the Civi DB
+    command: "cv -n upgrade:db --cwd {{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and installed_version.stdout != civi_ver.content
 
-# This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
-- name: Upgrade the Civi DB
-  command: "cv -n upgrade:db --cwd {{ item.item.value.webroot }}"
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined and item.stdout != civi_ver.content
+  - name: git config - user/email
+    blockinfile:
+      path: "{{ webroot }}/.git/config"
+      block: |
+        [user]
+          email = none@megaphonetech.com
+          name = {{ run_as_user }} on {{ inventory_hostname }}
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
-- name: git config - user/email
-  blockinfile:
-    path: "{{ item.item.value.webroot }}/.git/config"
-    block: |
-      [user]
-        email = none@megaphonetech.com
-        name = {{ item.item.value.run_as_user }} on {{ item.item.key }}
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined
+  - name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
+    patch:
+      src: "{{role_path}}/files/14339.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+    when: contract_type is search("Civi Maintenance")
 
-- name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
-  patch:
-    src: "{{role_path}}/files/14339.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
+  - name: Patch reporting#18, PR#14982.  Current status is OPEN
+    patch:
+      src: "{{role_path}}/files/14982.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+    when: contract_type is search("Civi Maintenance")
 
-- name: Patch reporting#18, PR#14982.  Current status is OPEN
-  patch:
-    src: "{{role_path}}/files/14982.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
+  - name: Patch membership#14, PR#15206.  Detect lifetime memberships correctly.
+    patch:
+      src: "{{role_path}}/files/15206.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+    when: contract_type is search("Civi Maintenance")
 
-- name: Patch membership#14, PR#15206.  Detect lifetime memberships correctly.
-  patch:
-    src: "{{role_path}}/files/15206.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
+  - name: Patch core#1006, PR#14390.  Current status is OPEN
+    patch:
+      src: "{{role_path}}/files/14390.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
 
-- name: Patch core#1006, PR#14390.  Current status is OPEN
-  patch:
-    src: "{{role_path}}/files/14390.diff"
-    basedir: "{{ item.value.civiroot }}"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
+  - name: Patch PHPWord to allow spaces in filenames
+    patch:
+      src: "{{role_path}}/files/1674.diff"
+      basedir: "{{ civiroot }}/vendor/phpoffice/phpword"
+      strip: 1
+    become: yes
+    when: contract_type is search("Civi Maintenance")
 
-- name: Patch PHPWord to allow spaces in filenames
-  patch:
-    src: "{{role_path}}/files/1674.diff"
-    basedir: "{{ item.value.civiroot }}/vendor/phpoffice/phpword"
-    strip: 1
-  with_dict: "{{ sites }}"
-  become: yes
-  when: item.value.contract_type is search("Civi Maintenance")
-  loop_control:
-    label: "{{ item.key }}"
-
-- name: git add Civi + patches
-  command: git add -v -A
-  args:
-    chdir: "{{ item.item.value.civiroot }}"
-  register: add_result
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  changed_when: add_result.stdout != ''
-  failed_when: add_result.stderr != ''
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined
-
-- name: git commit Civi + patches
-  command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
-  args:
-    chdir: "{{ item.item.value.civiroot }}"
-  register: commit_result
-  with_items: "{{ installed_version.results }}"
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  changed_when: commit_result.rc == 0
-  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
-  loop_control:
-    label: "{{ item.item.key }}"
-  when: item.skipped is not defined
-
-- name: git push
-  command: git push --set-upstream origin master
-  args:
-    chdir: "{{ item.item.value.webroot }}"
-  register: push_result
-  become: yes
-  become_user: "{{ item.item.value.run_as_user }}"
-  with_items: "{{ installed_version.results }}"
-  when: item.item.value.internal_repo == "1" and (item.item.value.git_repo_push_url is search("ssh://")) and item.skipped is not defined
-  changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
-  failed_when: not(push_result.rc == 0)
-  loop_control:
-    label: "{{ item.item.key }}"
+  - name: git add Civi + patches
+    command: git add -v -A
+    args:
+      chdir: "{{ civiroot }}"
+    register: add_result
+    become: yes
+    become_user: "{{ run_as_user }}"
+    changed_when: add_result.stdout != ''
+    failed_when: add_result.stderr != ''
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
 
+  - name: git commit Civi + patches
+    command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
+    args:
+      chdir: "{{ civiroot }}"
+    register: commit_result
+    become: yes
+    become_user: "{{ run_as_user }}"
+    changed_when: commit_result.rc == 0
+    failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
+
+  - name: git push
+    command: git push --set-upstream origin master
+    args:
+      chdir: "{{ webroot }}"
+    register: push_result
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: internal_repo == "1" and (git_repo_push_url is search("ssh://")) and contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
+    failed_when: not(push_result.rc == 0)
+
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 #- name: Get a list of plugins that need updating
 #  script: helpers/upgradeable-civi.php
 #  args:
