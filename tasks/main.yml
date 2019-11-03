@@ -23,7 +23,6 @@
   - name: check installed CiviCRM version
     command: mysql {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
     become: yes
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
     register: installed_version
     changed_when: false
 
@@ -33,7 +32,6 @@
       path: "{{ webroot }}/../sql-dumps"
       patterns: "{{ crm_db_name }}.pre-*.sql.gz"
       age_stamp: ctime
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
     register: old_db_backups
 
   - name: Delete old database backups
@@ -48,7 +46,6 @@
       path: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
     become: yes
     register: existing_backup
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
   - name: Back up the databases
     mysql_db:
@@ -65,7 +62,7 @@
       creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms != 'WordPress' and contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    when: cms != 'WordPress'
 
   - name: Unarchive the files into civiroot (.zip)
     unarchive:
@@ -74,14 +71,14 @@
       creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms == 'WordPress' and contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    when: cms == 'WordPress'
 
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and installed_version.stdout != civi_ver.content
+    when: installed_version.stdout != civi_ver.content
 
   - name: git config - user/email
     blockinfile:
@@ -92,7 +89,6 @@
           name = {{ run_as_user }} on {{ inventory_hostname }}
     become: yes
     become_user: "{{ run_as_user }}"
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
   - name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
     patch:
@@ -100,7 +96,6 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-    when: contract_type is search("Civi Maintenance")
 
   - name: Patch reporting#18, PR#14982.  Current status is OPEN
     patch:
@@ -108,7 +103,6 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-    when: contract_type is search("Civi Maintenance")
 
   - name: Patch membership#14, PR#15206.  Detect lifetime memberships correctly.
     patch:
@@ -116,7 +110,6 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-    when: contract_type is search("Civi Maintenance")
 
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
@@ -131,7 +124,6 @@
       basedir: "{{ civiroot }}/vendor/phpoffice/phpword"
       strip: 1
     become: yes
-    when: contract_type is search("Civi Maintenance")
 
   - name: git add Civi + patches
     command: git add -v -A
@@ -142,7 +134,6 @@
     become_user: "{{ run_as_user }}"
     changed_when: add_result.stdout != ''
     failed_when: add_result.stderr != ''
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
 
   - name: git commit Civi + patches
@@ -154,7 +145,6 @@
     become_user: "{{ run_as_user }}"
     changed_when: commit_result.rc == 0
     failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
-    when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
 
   - name: git push
     command: git push --set-upstream origin master
@@ -163,7 +153,7 @@
     register: push_result
     become: yes
     become_user: "{{ run_as_user }}"
-    when: internal_repo == "1" and (git_repo_push_url is search("ssh://")) and contract_type is search("Civi Maintenance") and freeze_crm != "1"
+    when: internal_repo == "1" and (git_repo_push_url is search("ssh://"))
     changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
     failed_when: not(push_result.rc == 0)
 
