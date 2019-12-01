@@ -158,58 +158,19 @@
     failed_when: not(push_result.rc == 0)
 
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
-#- name: Get a list of plugins that need updating
-#  script: helpers/upgradeable-civi.php
-#  args:
-#    chdir: "{{ item.value.webroot }}"
-#  register: extensions
-#  changed_when: false
-#  become: yes
-#  become_user: "{{ item.value.run_as_user }}"
-#  with_dict: "{{ sites }}"
-##  when: item.value.contract_type | search("Civi Maintenance")
-#  when: item.key == 'nwu.local'
-#  loop_control:
-#    label: "{{ item.key }}"
 
-#- debug: var=item
-#  with_items: "{{ extensions.results }}"
-#  when: item.stdout is defined and item.stdout != "null"
+- name: Get a list of plugins that need updating
+  script: helpers/upgradeable-civi.php
+  args:
+    chdir: "{{ webroot }}"
+  register: extensions
+  changed_when: false
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: contract_type is search("Civi Maintenance")
 
-#- name: Upgrade Civi extensions
-#  include_tasks: civi-extensions.yml
-#  with_nested: 
-#    - "{{ extensions.results }}"
-#    - "{{ extensions.results.stdout_lines }}"
-#  become_user: "{{ item[0].item.value.run_as_user }}"
-#  when: item[0].item.stdout_lines is defined and item[0].item.stdout_lines != "null"
-#  loop_control:
-#    label: "{{ item[0].item.key }}"
-
-
-# TODO: To properly loop over extensions and commit each separately, we'll need to use an include.
-#       Unfortunately, there's no looping over a block.  site-deploy role uses includes similarly.
-#- debug: 
-#    msg: "{{ item.name }} {{ item.version }}"
-#  with_items: "{{ extensions.results | map(attribute='stdout') | map('from_json') | list }}"
-
-#- name: Upgrade extensions
-#  debug: 
-#    msg: "cv ext:download -f {{ item.id }}"
-#  with_items: "{{ extensions.results | map(attribute='stdout') | map('from_json') | list }}"
-
-#- handler: Run extension db updates
-# cv ext:upgrade-db
-
-#- name: Add upgraded extension to git
-#  command:
-# git add .
-
-#- name: Commit upgraded extention to git
-#  command:
-# git commit -m"Updated CiviCRm extension {{ item.name }} to {{ item.version }}
-
-#- name: Push to repo
-#  command:
-# git push origin master
-
+- name: Upgrade Civi extensions
+  include_tasks: civi-extensions.yml
+  with_items:
+    - "{{ extensions.stdout }}"
+  when: item is defined and item != "null" and item.key not in extension_blacklist

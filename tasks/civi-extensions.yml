@@ -1,14 +1,47 @@
-- name: Show the site in question
-  debug:
-    msg: Extensions for "{{ item[0].item.key }}"
+---
+- name: Update a single plugin
+  command: "cv ext:download --force {{ item.key }}"
+  args:
+    chdir: "{{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
 
-- name: deleteme
-  debug:
-    var: item[1]
+# FIXME: This is better as a handler.
+# Maybe we can even check if it's needed.
+- name: Apply database upgrades
+  command: "cv ext:upgrade-db"
+  args:
+    chdir: "{{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
 
-- debug: 
-    msg: "{{ inner_item.name }} {{ inner_item.version }}"
-  with_items: "{{ item[1] | from_json | list }}"
-  loop_control:
-    loop_var: inner_item
+- name: git add the plugin
+  command: git add -v -A
+  args:
+    chdir: "{{ webroot }}"
+  register: add_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: add_result.stdout != ''
+  failed_when: add_result.stderr != ''
 
+- name: git commit Civi + patches
+  command: "git commit -m 'Civi extension upgrade: {{ item.key }} {{ item.version }}'"
+  args:
+    chdir: "{{ webroot }}"
+  register: commit_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: commit_result.rc == 0
+  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+
+- name: git push
+  command: git push --set-upstream origin master
+  args:
+    chdir: "{{ webroot }}"
+  register: push_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: internal_repo == "1" and (git_repo_push_url is search("ssh://"))
+  changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
+  failed_when: not(push_result.rc == 0)
