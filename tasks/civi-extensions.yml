@@ -8,12 +8,12 @@
 
 # FIXME: This is better as a handler.
 # Maybe we can even check if it's needed.
-- name: Apply database upgrades
-  command: "cv ext:upgrade-db"
-  args:
-    chdir: "{{ webroot }}"
-  become: yes
-  become_user: "{{ run_as_user }}"
+#- name: Apply database upgrades
+#  command: "cv ext:upgrade-db"
+#  args:
+#    chdir: "{{ webroot }}"
+#  become: yes
+#  become_user: "{{ run_as_user }}"
 
 - name: git add the plugin
   command: git add -v -A

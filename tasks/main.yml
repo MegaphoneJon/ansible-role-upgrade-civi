@@ -21,8 +21,7 @@
 
 - block:
   - name: check installed CiviCRM version
-    command: mysql {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
-    become: yes
+    command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}   {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
     register: installed_version
     changed_when: false
 
@@ -53,6 +52,7 @@
       name: "{{ crm_db_name }}"
       target: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
     become: yes
+    become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
   - name: Unarchive the files into civiroot (.tar.gz)
@@ -168,9 +168,14 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: contract_type is search("Civi Maintenance")
+  tags: upgrade-extensions
 
 - name: Upgrade Civi extensions
-  include_tasks: civi-extensions.yml
+  include_tasks:
+    file: civi-extensions.yml
+    apply:
+      tags: upgrade-extensions
   with_items:
     - "{{ extensions.stdout }}"
   when: item is defined and item != "null" and item.key not in extension_blacklist
+  tags: upgrade-extensions
