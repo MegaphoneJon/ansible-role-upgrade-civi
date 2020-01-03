@@ -1,4 +1,11 @@
 ---
+- name: Get current git commit hash
+  command: git rev-parse HEAD
+  args:
+    chdir: "{{ webroot }}"
+  register: latest_commit
+  changed_when: FALSE
+
 - name: Get the latest CiviCRM version number
   local_action:
     module: uri
@@ -189,3 +196,20 @@
     - "{{ extensions.stdout }}"
   when: item is defined and item != "null" and item.key not in extension_blacklist
   tags: upgrade-extensions
+
+- name: Get git changelog
+  command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
+  args:
+    chdir: "{{ webroot }}"
+  register: changelog
+  changed_when: FALSE
+  when: latest_commit.stdout is defined
+
+
+- name: Print git changelog
+  debug:
+    var: changelog.stdout
+  changed_when: FALSE
+  when: latest_commit.stdout is defined
+
+
