@@ -141,6 +141,41 @@
       strip: 1
     become: yes
 
+  - name: Patch scheduled reminders on templates
+    patch:
+      src: "{{role_path}}/files/16311.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch negative self-service hours
+    patch:
+      src: "{{role_path}}/files/events-34.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  # This is a hack.  I should first disentangle self-service cancelation from xfer, then apply this patch to cancellation only.
+  - name: Patch self-service cancelation from waitlist
+    patch:
+      src: "{{role_path}}/files/events-26.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Don't allow multiple waitlist regs (event#30)
+    patch:
+      src: "{{role_path}}/files/16358.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Alphabetize report listing (Reporting#25)
+    patch:
+      src: "{{role_path}}/files/16259.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
 
   - name: git add Civi + patches
     command: git add -v -A

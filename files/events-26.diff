@@ -1,0 +1,44 @@
+diff --git a/CRM/Event/BAO/ParticipantStatusType.php b/CRM/Event/BAO/ParticipantStatusType.php
+index 51be2dfd3e0..4173f183641 100644
+--- a/CRM/Event/BAO/ParticipantStatusType.php
++++ b/CRM/Event/BAO/ParticipantStatusType.php
+@@ -306,4 +306,23 @@ public static function process($params) {
+     return ['is_error' => 0, 'messages' => $returnMessages];
+   }
+ 
++  /**
++   * Returns TRUE if this service can be canceled via self-service, FALSE if not.
++   * @param string $status Should correspond to civicrm_participant_status_type.name.
++   *
++   * @return boolean
++   */
++  public static function isSelfServiceCancelableStatus($status) {
++    // Ideally this would be a boolean flag on participant statuses. AND handled at the BAO level.
++    $cancelableStatuses = [
++      'Registered',
++      'Pending from pay later',
++      'On waitlist',
++      'Awaiting approval',
++      'Pending from approval',
++      'Pending from waitlist',
++    ];
++    return in_array($status, $cancelableStatuses);
++  }
++
+ }
+diff --git a/CRM/Event/Form/SelfSvcUpdate.php b/CRM/Event/Form/SelfSvcUpdate.php
+index 5e4e01f99ad..584b0f14961 100644
+--- a/CRM/Event/Form/SelfSvcUpdate.php
++++ b/CRM/Event/Form/SelfSvcUpdate.php
+@@ -156,8 +156,9 @@ public function preProcess() {
+       $details['register_date'] = $dao->register_date;
+       $details['event_start_date'] = $dao->start_date;
+     }
+-    //verify participant status is still Registered
+-    if ($details['status'] != "Registered") {
++    // Verify participant status is one that is available for self-service.
++    $isCancelable = CRM_Event_BAO_ParticipantStatusType::isSelfServiceCancelableStatus($details['status']);
++    if (!$isCancelable) {
+       $status = "You cannot transfer or cancel your registration for " . $this->_event_title . ' as you are not currently registered for this event.';
+       CRM_Core_Session::setStatus($status, ts('Sorry'), 'alert');
+       CRM_Utils_System::redirect($url);
