@@ -25,7 +25,7 @@ index cb267eac2d3..2fd463dea2c 100644
 +  private function notTemplate() {
 +    if ($this->mapping->getEntity() === 'civicrm_participant') {
 +      $entityId = $this->actionSchedule->entity_value;
-+      $query = new CRM_Utils_SQL_Select('civicrm_event e');
++      $query = new \CRM_Utils_SQL_Select('civicrm_event e');
 +      $sql = $query
 +        ->select('is_template')
 +        ->where("e.id = {$entityId}")
