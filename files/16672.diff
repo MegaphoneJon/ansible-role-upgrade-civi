@@ -1,0 +1,13 @@
+diff --git a/CRM/Report/Form/Activity.php b/CRM/Report/Form/Activity.php
+index fa43ee5f26f..a0b619267e3 100644
+--- a/CRM/Report/Form/Activity.php
++++ b/CRM/Report/Form/Activity.php
+@@ -544,7 +544,7 @@ public function where($recordType = NULL) {
+           }
+           else {
+             $op = CRM_Utils_Array::value("{$fieldName}_op", $this->_params);
+-            if ($op && ($op != 'nnll' && $op != 'nll')) {
++            if ($op && !($fieldName == "contact_{$recordType}" && ($op != 'nnll' || $op != 'nll'))) {
+               $clause = $this->whereClause($field,
+                 $op,
+                 CRM_Utils_Array::value("{$fieldName}_value", $this->_params),

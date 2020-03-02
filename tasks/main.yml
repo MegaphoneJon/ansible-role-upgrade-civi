@@ -68,7 +68,7 @@
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
       dest: "{{ civiroot }}/.."
-      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
+#      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms != 'WordPress'
@@ -77,7 +77,7 @@
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
       dest: "{{ civiroot }}/../.."
-      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
+#      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms == 'WordPress'
@@ -173,6 +173,13 @@
   - name: Alphabetize report listing (Reporting#25)
     patch:
       src: "{{role_path}}/files/16259.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch core#1627, activity detail report failure
+    patch:
+      src: "{{role_path}}/files/16627.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes

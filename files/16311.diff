@@ -1,8 +1,8 @@
 diff --git a/Civi/ActionSchedule/RecipientBuilder.php b/Civi/ActionSchedule/RecipientBuilder.php
-index cb267eac2d3..2fd463dea2c 100644
+index cb267eac2d..a54bca3b83 100644
 --- a/Civi/ActionSchedule/RecipientBuilder.php
 +++ b/Civi/ActionSchedule/RecipientBuilder.php
-@@ -138,7 +138,7 @@ public function __construct($now, $actionSchedule, $mapping) {
+@@ -138,7 +138,7 @@ class RecipientBuilder {
    public function build() {
      $this->buildRelFirstPass();
  
@@ -11,7 +11,7 @@ index cb267eac2d3..2fd463dea2c 100644
        $this->buildAddlFirstPass();
      }
  
-@@ -603,4 +603,24 @@ protected function resetOnTriggerDateChange() {
+@@ -603,4 +603,25 @@ reminder.action_schedule_id = {$this->actionSchedule->id}";
      return $this->mapping->resetOnTriggerDateChange($this->actionSchedule);
    }
  
@@ -35,4 +35,5 @@ index cb267eac2d3..2fd463dea2c 100644
 +    }
 +    return TRUE;
 +  }
++
  }
