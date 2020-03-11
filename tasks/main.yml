@@ -68,7 +68,6 @@
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
       dest: "{{ civiroot }}/.."
-#      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms != 'WordPress'
@@ -77,7 +76,6 @@
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
       dest: "{{ civiroot }}/../.."
-#      creates: "{{ civiroot }}/release-notes/{{ civi_ver.content }}.md"
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms == 'WordPress'
@@ -134,20 +132,6 @@
       strip: 1
     become: yes
 
-  - name: Patch waitlist problem
-    patch:
-      src: "{{role_path}}/files/16098.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch scheduled reminders on templates
-    patch:
-      src: "{{role_path}}/files/16311.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch negative self-service hours
     patch:
       src: "{{role_path}}/files/events-34.diff"
@@ -163,13 +147,6 @@
       strip: 1
     become: yes
 
-  - name: Don't allow multiple waitlist regs (event#30)
-    patch:
-      src: "{{role_path}}/files/16358.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Alphabetize report listing (Reporting#25)
     patch:
       src: "{{role_path}}/files/16259.diff"
@@ -179,7 +156,7 @@
 
   - name: Patch core#1627, activity detail report failure
     patch:
-      src: "{{role_path}}/files/16627.diff"
+      src: "{{role_path}}/files/16672.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -216,7 +193,7 @@
     changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
     failed_when: not(push_result.rc == 0)
 
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
 
 - name: Get a list of plugins that need updating
   script: helpers/upgradeable-civi.php
@@ -226,7 +203,7 @@
   changed_when: false
   become: yes
   become_user: "{{ run_as_user }}"
-  when: contract_type is search("Civi Maintenance")
+  when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
   tags: upgrade-extensions
 
 - name: Upgrade Civi extensions
@@ -236,7 +213,7 @@
       tags: upgrade-extensions
   with_items:
     - "{{ extensions.stdout }}"
-  when: item is defined and item != "null" and item.key not in extension_blacklist
+  when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
   tags: upgrade-extensions
 
 - name: Get git changelog
@@ -245,13 +222,13 @@
     chdir: "{{ webroot }}"
   register: changelog
   changed_when: FALSE
-  when: latest_commit.stdout is defined
+  when: latest_commit.stdout is defined and civicrm == 'Yes'
 
 
 - name: Print git changelog
   debug:
     var: changelog.stdout
   changed_when: FALSE
-  when: latest_commit.stdout is defined
+  when: latest_commit.stdout is defined and civicrm == 'Yes'
 
 
