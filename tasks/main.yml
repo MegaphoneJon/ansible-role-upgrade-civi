@@ -1,32 +1,32 @@
 ---
-- name: Get current git commit hash
-  command: git rev-parse HEAD
-  args:
-    chdir: "{{ webroot }}"
-  register: latest_commit
-  changed_when: FALSE
-
-- name: Get the latest CiviCRM version number
-  local_action:
-    module: uri
-    url: http://latest.civicrm.org/stable.php
-    return_content: yes
-  run_once: true
-  register: civi_ver
-
-# https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
-- name: Download stable versions of Civi
-  local_action:
-    module: get_url
-    url: "https://download.civicrm.org/{{ item }}"
-    dest: "/tmp/{{ item }}"
-  run_once: true
-  with_items:
-    - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
-    - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
-    - "civicrm-{{ civi_ver.content }}-wordpress.zip"
-
 - block:
+  - name: Get current git commit hash
+    command: git rev-parse HEAD
+    args:
+      chdir: "{{ webroot }}"
+    register: latest_commit
+    changed_when: FALSE
+
+  - name: Get the latest CiviCRM version number
+    local_action:
+      module: uri
+      url: http://latest.civicrm.org/stable.php
+      return_content: yes
+    run_once: true
+    register: civi_ver
+
+  # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
+  - name: Download stable versions of Civi
+    local_action:
+      module: get_url
+      url: "https://download.civicrm.org/{{ item }}"
+      dest: "/tmp/{{ item }}"
+    run_once: true
+    with_items:
+      - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
+      - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
+      - "civicrm-{{ civi_ver.content }}-wordpress.zip"
+
   - name: check installed CiviCRM version
     command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}   {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
     register: installed_version
@@ -193,42 +193,39 @@
     changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
     failed_when: not(push_result.rc == 0)
 
+  - name: Get a list of plugins that need updating
+    script: helpers/upgradeable-civi.php
+    args:
+      chdir: "{{ webroot }}"
+    register: extensions
+    changed_when: false
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
+    tags: upgrade-extensions
+
+  - name: Upgrade Civi extensions
+    include_tasks:
+      file: civi-extensions.yml
+      apply:
+        tags: upgrade-extensions
+    with_items:
+      - "{{ extensions.stdout }}"
+    when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
+    tags: upgrade-extensions
+
+  - name: Get git changelog
+    command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
+    args:
+      chdir: "{{ webroot }}"
+    register: changelog
+    changed_when: FALSE
+    when: latest_commit.stdout is defined and civicrm == 'Yes'
+
+  - name: Print git changelog
+    debug:
+      var: changelog.stdout
+    changed_when: FALSE
+    when: latest_commit.stdout is defined and civicrm == 'Yes'
+
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
-
-- name: Get a list of plugins that need updating
-  script: helpers/upgradeable-civi.php
-  args:
-    chdir: "{{ webroot }}"
-  register: extensions
-  changed_when: false
-  become: yes
-  become_user: "{{ run_as_user }}"
-  when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
-  tags: upgrade-extensions
-
-- name: Upgrade Civi extensions
-  include_tasks:
-    file: civi-extensions.yml
-    apply:
-      tags: upgrade-extensions
-  with_items:
-    - "{{ extensions.stdout }}"
-  when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
-  tags: upgrade-extensions
-
-- name: Get git changelog
-  command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
-  args:
-    chdir: "{{ webroot }}"
-  register: changelog
-  changed_when: FALSE
-  when: latest_commit.stdout is defined and civicrm == 'Yes'
-
-
-- name: Print git changelog
-  debug:
-    var: changelog.stdout
-  changed_when: FALSE
-  when: latest_commit.stdout is defined and civicrm == 'Yes'
-
-
