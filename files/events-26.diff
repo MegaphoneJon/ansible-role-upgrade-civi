@@ -1,8 +1,24 @@
+diff --git a/CRM/Event/BAO/Participant.php b/CRM/Event/BAO/Participant.php
+index c2b27bce84..ce8c2237fe 100644
+--- a/CRM/Event/BAO/Participant.php
++++ b/CRM/Event/BAO/Participant.php
+@@ -1906,8 +1906,9 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
+       $eventTitle = $dao->title;
+       $eventId = $dao->event_id;
+     }
+-    //verify participant status is still Registered
+-    if ($details['status'] != 'Registered') {
++    // Verify participant status is one that is available for self-service.
++    $isCancelable = CRM_Event_BAO_ParticipantStatusType::isSelfServiceCancelableStatus($details['status']);
++    if (!$isCancelable) {
+       $status = "You cannot transfer or cancel your registration for " . $eventTitle . ' as you are not currently registered for this event.';
+       CRM_Core_Session::setStatus($status, ts('Sorry'), 'alert');
+       CRM_Utils_System::redirect($url);
 diff --git a/CRM/Event/BAO/ParticipantStatusType.php b/CRM/Event/BAO/ParticipantStatusType.php
-index 51be2dfd3e0..4173f183641 100644
+index b0166dbff2..96daab99a7 100644
 --- a/CRM/Event/BAO/ParticipantStatusType.php
 +++ b/CRM/Event/BAO/ParticipantStatusType.php
-@@ -306,4 +306,23 @@ public static function process($params) {
+@@ -306,4 +306,23 @@ LEFT JOIN  civicrm_event event ON ( event.id = participant.event_id )
      return ['is_error' => 0, 'messages' => $returnMessages];
    }
  
@@ -26,19 +42,3 @@ index 51be2dfd3e0..4173f183641 100644
 +  }
 +
  }
-diff --git a/CRM/Event/Form/SelfSvcUpdate.php b/CRM/Event/Form/SelfSvcUpdate.php
-index 5e4e01f99ad..584b0f14961 100644
---- a/CRM/Event/Form/SelfSvcUpdate.php
-+++ b/CRM/Event/Form/SelfSvcUpdate.php
-@@ -156,8 +156,9 @@ public function preProcess() {
-       $details['register_date'] = $dao->register_date;
-       $details['event_start_date'] = $dao->start_date;
-     }
--    //verify participant status is still Registered
--    if ($details['status'] != "Registered") {
-+    // Verify participant status is one that is available for self-service.
-+    $isCancelable = CRM_Event_BAO_ParticipantStatusType::isSelfServiceCancelableStatus($details['status']);
-+    if (!$isCancelable) {
-       $status = "You cannot transfer or cancel your registration for " . $this->_event_title . ' as you are not currently registered for this event.';
-       CRM_Core_Session::setStatus($status, ts('Sorry'), 'alert');
-       CRM_Utils_System::redirect($url);

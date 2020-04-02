@@ -1,17 +1,17 @@
-diff --git a/CRM/Event/Form/SelfSvcUpdate.php b/CRM/Event/Form/SelfSvcUpdate.php
-index 5e4e01f99ad..d010548f53b 100644
---- a/CRM/Event/Form/SelfSvcUpdate.php
-+++ b/CRM/Event/Form/SelfSvcUpdate.php
-@@ -170,16 +170,25 @@ public function preProcess() {
+diff --git a/CRM/Event/BAO/Participant.php b/CRM/Event/BAO/Participant.php
+index 8117991b40..c2b27bce84 100644
+--- a/CRM/Event/BAO/Participant.php
++++ b/CRM/Event/BAO/Participant.php
+@@ -1920,16 +1920,25 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
      }
      $start_time = new Datetime($start_date);
      $timenow = new Datetime();
--    if (!$this->isBackoffice && !empty($start_time) && $start_time < $timenow) {
+-    if (!$isBackOffice && !empty($start_time) && $start_time < $timenow) {
 +    if (!$this->isBackoffice && !empty($start_time) && $start_time < $timenow && $time_limit >= 0) {
-       $status = ts("Registration for this event cannot be cancelled or transferred once the event has begun. Contact the event organizer if you have questions.");
+       $status = ts('Registration for this event cannot be cancelled or transferred once the event has begun. Contact the event organizer if you have questions.');
        CRM_Core_Error::statusBounce($status, $url, ts('Sorry'));
      }
--    if (!$this->isBackoffice && !empty($time_limit) && $time_limit > 0) {
+-    if (!$isBackOffice && !empty($time_limit) && $time_limit > 0) {
 +    if (!$this->isBackoffice && !empty($time_limit)) {
        $interval = $timenow->diff($start_time);
        $days = $interval->format('%d');
@@ -34,7 +34,7 @@ index 5e4e01f99ad..d010548f53b 100644
        }
      }
 diff --git a/xml/schema/Event/Event.xml b/xml/schema/Event/Event.xml
-index 4dd1e206b67..4473ae6fa4b 100644
+index 4dd1e206b6..4473ae6fa4 100644
 --- a/xml/schema/Event/Event.xml
 +++ b/xml/schema/Event/Event.xml
 @@ -678,7 +678,7 @@

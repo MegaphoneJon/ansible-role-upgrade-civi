@@ -154,9 +154,9 @@
       strip: 1
     become: yes
 
-  - name: Patch core#1627, activity detail report failure
+  - name: Patch core#1688 - false positive on missing custom fields
     patch:
-      src: "{{role_path}}/files/16672.diff"
+      src: "{{role_path}}/files/16960.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
