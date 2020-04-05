@@ -154,13 +154,6 @@
       strip: 1
     become: yes
 
-  - name: Patch core#1688 - false positive on missing custom fields
-    patch:
-      src: "{{role_path}}/files/16960.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: git add Civi + patches
     command: git add -v -A
     args:
