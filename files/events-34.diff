@@ -7,12 +7,12 @@ index 8117991b40..c2b27bce84 100644
      $start_time = new Datetime($start_date);
      $timenow = new Datetime();
 -    if (!$isBackOffice && !empty($start_time) && $start_time < $timenow) {
-+    if (!$this->isBackoffice && !empty($start_time) && $start_time < $timenow && $time_limit >= 0) {
++    if (!$isBackoffice && !empty($start_time) && $start_time < $timenow && $time_limit >= 0) {
        $status = ts('Registration for this event cannot be cancelled or transferred once the event has begun. Contact the event organizer if you have questions.');
        CRM_Core_Error::statusBounce($status, $url, ts('Sorry'));
      }
 -    if (!$isBackOffice && !empty($time_limit) && $time_limit > 0) {
-+    if (!$this->isBackoffice && !empty($time_limit)) {
++    if (!$isBackoffice && !empty($time_limit)) {
        $interval = $timenow->diff($start_time);
        $days = $interval->format('%d');
 -      $hours   = $interval->format('%h');
