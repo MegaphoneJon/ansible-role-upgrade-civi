@@ -70,7 +70,7 @@
       dest: "{{ civiroot }}/.."
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms != 'WordPress'
+    when: cms != 'WordPress' and installed_version.stdout != civi_ver.content
 
   - name: Unarchive the files into civiroot (.zip)
     unarchive:
@@ -78,7 +78,7 @@
       dest: "{{ civiroot }}/../.."
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms == 'WordPress'
+    when: cms == 'WordPress' and installed_version.stdout != civi_ver.content
 
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
