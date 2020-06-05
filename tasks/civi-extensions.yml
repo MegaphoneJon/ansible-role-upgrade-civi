@@ -1,6 +1,6 @@
 ---
 - name: Update a single plugin
-  command: "cv ext:download --force {{ item.key }}"
+  command: "cv ext:download --refresh --force {{ item.key }}"
   args:
     chdir: "{{ webroot }}"
   become: yes

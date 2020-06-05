@@ -161,6 +161,13 @@
       strip: 1
     become: yes
 
+  - name: Fix cron slippage
+    patch:
+      src: "{{role_path}}/files/cron-slippage.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: git add Civi + patches
     command: git add -v -A
     args:

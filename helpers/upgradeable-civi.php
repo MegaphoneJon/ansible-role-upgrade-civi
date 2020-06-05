@@ -5,9 +5,10 @@ eval(`cv php:boot`);
 $e = new CRM_Admin_Page_Extensions();
 $localExtensionList = $e->formatLocalExtensionRows();
 $remoteExtensionList = $e->formatRemoteExtensionRows($localExtensionList);
+$upgradeableExtensions = [];
 $i = 0;
 foreach ($remoteExtensionList as $e) {
-  if ($e['is_upgradeable']) {
+  if ($e['is_upgradeable'] ?? FALSE) {
     $upgradeableExtensions[$i]['key'] = $e['file'];
     $upgradeableExtensions[$i]['name'] = $e['name'];
     $upgradeableExtensions[$i]['version'] = $e['version'];
