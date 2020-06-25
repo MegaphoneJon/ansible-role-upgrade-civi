@@ -1,0 +1,189 @@
+diff --git a/CRM/Activity/ActionMapping.php b/CRM/Activity/ActionMapping.php
+index 05abcf9e24c..6c0bb41d1f5 100644
+--- a/CRM/Activity/ActionMapping.php
++++ b/CRM/Activity/ActionMapping.php
+@@ -118,4 +118,12 @@ public function createQuery($schedule, $phase, $defaultParams) {
+     return $query;
+   }
+ 
++
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    return TRUE;
++  }
+ }
+diff --git a/CRM/Contact/ActionMapping.php b/CRM/Contact/ActionMapping.php
+index f4aee154e83..b04b64e913d 100644
+--- a/CRM/Contact/ActionMapping.php
++++ b/CRM/Contact/ActionMapping.php
+@@ -139,4 +139,13 @@ public function createQuery($schedule, $phase, $defaultParams) {
+     return $query;
+   }
+ 
++
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    return TRUE;
++  }
++
+ }
+diff --git a/CRM/Contribute/ActionMapping/ByPage.php b/CRM/Contribute/ActionMapping/ByPage.php
+index 8c09c81cc27..3aaa48513f0 100644
+--- a/CRM/Contribute/ActionMapping/ByPage.php
++++ b/CRM/Contribute/ActionMapping/ByPage.php
+@@ -216,4 +216,13 @@ public function resetOnTriggerDateChange($schedule) {
+     return FALSE;
+   }
+ 
++
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    return TRUE;
++  }
++
+ }
+diff --git a/CRM/Contribute/ActionMapping/ByType.php b/CRM/Contribute/ActionMapping/ByType.php
+index ea259901a56..4da989f0ecb 100644
+--- a/CRM/Contribute/ActionMapping/ByType.php
++++ b/CRM/Contribute/ActionMapping/ByType.php
+@@ -235,4 +235,12 @@ public function resetOnTriggerDateChange($schedule) {
+     return FALSE;
+   }
+ 
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    return TRUE;
++  }
++
+ }
+diff --git a/CRM/Event/ActionMapping.php b/CRM/Event/ActionMapping.php
+index 77fa8d77edf..7c686b51192 100644
+--- a/CRM/Event/ActionMapping.php
++++ b/CRM/Event/ActionMapping.php
+@@ -186,4 +186,20 @@ public function createQuery($schedule, $phase, $defaultParams) {
+     return $query;
+   }
+ 
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    // Don't send to additional recipients if this event is deleted or a template.
++    $query = new \CRM_Utils_SQL_Select('civicrm_event e');
++    $sql = $query
++      ->select('e.id')
++      ->where("e.id = {$entityId}")
++      ->where("is_template = 0")
++      ->toSQL();
++    $dao = \CRM_Core_DAO::executeQuery($sql);
++    return (bool) $dao->N;
++  }
++
+ }
+diff --git a/CRM/Member/ActionMapping.php b/CRM/Member/ActionMapping.php
+index 56db7eef414..094b1051b90 100644
+--- a/CRM/Member/ActionMapping.php
++++ b/CRM/Member/ActionMapping.php
+@@ -168,4 +168,11 @@ public function resetOnTriggerDateChange($schedule) {
+     }
+   }
+ 
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool {
++    return TRUE;
++  }
+ }
+diff --git a/Civi/ActionSchedule/Mapping.php b/Civi/ActionSchedule/Mapping.php
+index f6c1450d564..8c5c7d2de72 100644
+--- a/Civi/ActionSchedule/Mapping.php
++++ b/Civi/ActionSchedule/Mapping.php
+@@ -337,4 +337,10 @@ public function resetOnTriggerDateChange($schedule) {
+     return FALSE;
+   }
+ 
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  abstract public function sendToAdditional(int $entityId): bool;
++
+ }
+diff --git a/Civi/ActionSchedule/MappingInterface.php b/Civi/ActionSchedule/MappingInterface.php
+index 3dcd04fea13..8cd25a9e70c 100644
+--- a/Civi/ActionSchedule/MappingInterface.php
++++ b/Civi/ActionSchedule/MappingInterface.php
+@@ -139,4 +139,10 @@ public function createQuery($schedule, $phase, $defaultParams);
+    */
+   public function resetOnTriggerDateChange($schedule);
+ 
++  /**
++   * Determine whether a schedule based on this mapping should
++   * send to additional contacts.
++   */
++  public function sendToAdditional(int $entityId): bool;
++
+ }
+diff --git a/Civi/ActionSchedule/RecipientBuilder.php b/Civi/ActionSchedule/RecipientBuilder.php
+index c8a32dd97e3..c52f64adbb6 100644
+--- a/Civi/ActionSchedule/RecipientBuilder.php
++++ b/Civi/ActionSchedule/RecipientBuilder.php
+@@ -138,7 +138,7 @@ public function __construct($now, $actionSchedule, $mapping) {
+   public function build() {
+     $this->buildRelFirstPass();
+ 
+-    if ($this->prepareAddlFilter('c.id') && $this->notTemplate()) {
++    if ($this->prepareAddlFilter('c.id') && $this->mapping->sendToAdditional($this->actionSchedule->entity_value)) {
+       $this->buildAddlFirstPass();
+     }
+ 
+@@ -146,7 +146,7 @@ public function build() {
+       $this->buildRelRepeatPass();
+     }
+ 
+-    if ($this->actionSchedule->is_repeat && $this->prepareAddlFilter('c.id')) {
++    if ($this->actionSchedule->is_repeat && $this->prepareAddlFilter('c.id') && $this->mapping->sendToAdditional($this->actionSchedule->entity_value)) {
+       $this->buildAddlRepeatPass();
+     }
+   }
+@@ -603,25 +603,4 @@ protected function resetOnTriggerDateChange() {
+     return $this->mapping->resetOnTriggerDateChange($this->actionSchedule);
+   }
+ 
+-  /**
+-   * Confirm this object isn't attached to a template.
+-   * Returns TRUE if this action schedule isn't attached to a template.
+-   * Templates are (currently) unique to events, so we only evaluate those.
+-   *
+-   * @return bool;
+-   */
+-  private function notTemplate() {
+-    if ($this->mapping->getEntity() === 'civicrm_participant') {
+-      $entityId = $this->actionSchedule->entity_value;
+-      $query = new \CRM_Utils_SQL_Select('civicrm_event e');
+-      $sql = $query
+-        ->select('is_template')
+-        ->where("e.id = {$entityId}")
+-        ->toSQL();
+-      $dao = \CRM_Core_DAO::executeQuery($sql);
+-      return !(bool) $dao->fetchValue();
+-    }
+-    return TRUE;
+-  }
+-
+ }
