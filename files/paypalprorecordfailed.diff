@@ -48,7 +48,7 @@ index 46c0949f85..eeee7c456f 100644
  
 -    if ($input['txnType'] !== 'recurring_payment' && $input['txnType'] !== 'recurring_payment_profile_created') {
 -      throw new CRM_Core_Exception('Paypal IPNS not handled other than recurring_payments');
-+    if ($input['txnType'] !== 'recurring_payment' && $input['txnType'] !== 'recurring_payment_profile_created' && ($input['txnType'] !== 'recurring_payment_failed') {
++    if ($input['txnType'] !== 'recurring_payment' && $input['txnType'] !== 'recurring_payment_profile_created' && ($input['txnType'] !== 'recurring_payment_failed')) {
 +      throw new CRM_Core_Exception('Paypal IPNS not handled other than recurring_payments and failed payments');
      }
  
