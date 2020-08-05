@@ -1,5 +1,14 @@
 ---
 - block:
+  - name: git pull
+    git:
+      repo: "{{ git_repo_url }}"
+      dest: "{{ gitroot }}"
+      version: master
+      track_submodules: no
+    become: yes
+    become_user: "{{ run_as_user }}"
+
   - name: Get current git commit hash
     command: git rev-parse HEAD
     args:
@@ -132,13 +141,6 @@
       strip: 1
     become: yes
 
-  - name: Patch negative self-service hours
-    patch:
-      src: "{{role_path}}/files/events-34.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   # This is a hack.  I should first disentangle self-service cancelation from xfer, then apply this patch to cancellation only.
   - name: Patch self-service cancelation from waitlist
     patch:
@@ -157,6 +159,13 @@
   - name: Record failed PayPal Pro IPNs
     patch:
       src: "{{role_path}}/files/paypalprorecordfailed.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: event#34
+    patch:
+      src: "{{role_path}}/files/event34.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
