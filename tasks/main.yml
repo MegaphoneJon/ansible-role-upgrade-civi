@@ -37,10 +37,22 @@
       - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
       - "civicrm-{{ civi_ver.content }}-wordpress.zip"
 
+#  - name: check installed CiviCRM version
+#    command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}   {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
+#    register: installed_version
+#    changed_when: false
+
   - name: check installed CiviCRM version
-    command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}   {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
-    register: installed_version
+    xml:
+      path: "{{ civiroot }}/xml/version.xml"
+      xpath: /version/version_no
+      content: text
+    register: version_xml
     changed_when: false
+
+  - name: Set version number
+    set_fact:
+      installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
 
   - name: Find old database backups
     find:
@@ -80,7 +92,7 @@
       dest: "{{ civiroot }}/.."
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms != 'WordPress' and installed_version.stdout != civi_ver.content
+    when: cms != 'WordPress' and installed_version != civi_ver.content
 
   - name: Unarchive the files into civiroot (.zip)
     unarchive:
@@ -88,14 +100,14 @@
       dest: "{{ civiroot }}/../.."
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms == 'WordPress' and installed_version.stdout != civi_ver.content
+    when: cms == 'WordPress' and installed_version != civi_ver.content
 
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
-    when: installed_version.stdout != civi_ver.content
+    when: installed_version != civi_ver.content
 
   - name: git config - user/email
     blockinfile:
