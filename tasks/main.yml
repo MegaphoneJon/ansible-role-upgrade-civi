@@ -176,6 +176,13 @@
       strip: 1
     become: yes
 
+  - name: event#34 part 2
+    patch:
+      src: "{{role_path}}/files/event34-2.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Fix scheduled reminders to add'l recipients on deleted events
     patch:
       src: "{{role_path}}/files/17641.diff"
