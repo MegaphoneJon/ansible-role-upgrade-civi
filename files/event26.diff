@@ -1,0 +1,28 @@
+diff --git a/CRM/Event/BAO/ParticipantStatusType.php b/CRM/Event/BAO/ParticipantStatusType.php
+index 9db56d820b..96daab99a7 100644
+--- a/CRM/Event/BAO/ParticipantStatusType.php
++++ b/CRM/Event/BAO/ParticipantStatusType.php
+@@ -304,4 +306,23 @@ LEFT JOIN  civicrm_event event ON ( event.id = participant.event_id )
+     return ['is_error' => 0, 'messages' => $returnMessages];
+   }
+ 
++  /**
++   * Returns TRUE if this service can be canceled via self-service, FALSE if not.
++   * @param string $status Should correspond to civicrm_participant_status_type.name.
++   *
++   * @return boolean
++   */
++  public static function isSelfServiceCancelableStatus($status) {
++    // Ideally this would be a boolean flag on participant statuses. AND handled at the BAO level.
++    $cancelableStatuses = [
++      'Registered',
++      'Pending from pay later',
++      'On waitlist',
++      'Awaiting approval',
++      'Pending from approval',
++      'Pending from waitlist',
++    ];
++    return in_array($status, $cancelableStatuses);
++  }
++
+ }
