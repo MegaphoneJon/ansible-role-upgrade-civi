@@ -1,20 +1,19 @@
-diff --git a/CRM/Event/BAO/Participant.php b/CRM/Event/BAO/Participant.php
-index d05b0117..8a7045a9 100644
+diff --git a/CRM/Event/BAO/Participant.php b/wp-content/plugins/civicrm/civicrm/CRM/Event/BAO/Participant.php
+index 1f19c32f..a86f361d 100644
 --- a/CRM/Event/BAO/Participant.php
 +++ b/CRM/Event/BAO/Participant.php
-@@ -1906,8 +1906,10 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
-       $eventTitle = $dao->title;
-       $eventId = $dao->event_id;
+@@ -1909,8 +1909,9 @@ WHERE    civicrm_participant.contact_id = {$contactID} AND
+       $details['ineligible_message'] = ts('This event registration can not be transferred or cancelled. Contact the event organizer if you have questions.');
+       return $details;
      }
 -    //verify participant status is still Registered
 -    if ($details['status'] != 'Registered') {
-+
 +    // Verify participant status is one that is available for self-service.
 +    $isCancelable = CRM_Event_BAO_ParticipantStatusType::isSelfServiceCancelableStatus($details['status']);
 +    if (!$isCancelable) {
-       $status = "You cannot transfer or cancel your registration for " . $eventTitle . ' as you are not currently registered for this event.';
-       CRM_Core_Session::setStatus($status, ts('Sorry'), 'alert');
-       CRM_Utils_System::redirect($url);
+       $details['eligible'] = FALSE;
+       $details['ineligible_message'] = "You cannot transfer or cancel your registration for " . $eventTitle . ' as you are not currently registered for this event.';
+       return $details;
 diff --git a/CRM/Event/BAO/ParticipantStatusType.php b/CRM/Event/BAO/ParticipantStatusType.php
 index b0166dbf..96daab99 100644
 --- a/CRM/Event/BAO/ParticipantStatusType.php

@@ -1,0 +1,71 @@
+diff --git a/CRM/Event/BAO/Event.php b/CRM/Event/BAO/Event.php
+index 794e5d14e5a..b583fdd0992 100644
+--- a/CRM/Event/BAO/Event.php
++++ b/CRM/Event/BAO/Event.php
+@@ -1158,6 +1158,8 @@ public static function sendMail($contactID, $values, $participantId, $isTest = F
+           'conference_sessions' => $sessions,
+           'credit_card_number' => CRM_Utils_System::mungeCreditCard(CRM_Utils_Array::value('credit_card_number', $participantParams)),
+           'credit_card_exp_date' => CRM_Utils_Date::mysqlToIso(CRM_Utils_Date::format(CRM_Utils_Array::value('credit_card_exp_date', $participantParams))),
++          'selfcancelxfer_time' => abs($values['event']['selfcancelxfer_time']),
++          'selfservice_preposition' => $values['event']['selfcancelxfer_time'] < 0 ? 'after' : 'before',
+         ]);
+ 
+         // CRM-13890 : NOTE wait list condition need to be given so that
+diff --git a/CRM/Event/BAO/Participant.php b/CRM/Event/BAO/Participant.php
+index 1f19c32f74b..f18198b2096 100644
+--- a/CRM/Event/BAO/Participant.php
++++ b/CRM/Event/BAO/Participant.php
+@@ -1877,7 +1877,6 @@ public static function formatFieldsAndSetProfileDefaults($contactId, &$form) {
+    * Evaluate whether a participant record is eligible for self-service transfer/cancellation.  If so,
+    * return additional participant/event details.
+    *
+-   * TODO: This function fails when the "hours until self-service" is less than zero.
+    * @param int $participantId
+    * @param string $url
+    * @param bool $isBackOffice
+@@ -1930,7 +1929,12 @@ public static function getSelfServiceEligibility(int $participantId, string $url
+       $cancelDeadline = (new Datetime($start_date))->sub($cancelInterval);
+       if ($timenow > $cancelDeadline) {
+         $details['eligible'] = FALSE;
+-        $details['ineligible_message'] = ts("Registration for this event cannot be cancelled or transferred less than %1 hours prior to the event's start time. Contact the event organizer if you have questions.", [1 => $time_limit]);
++        // Change the language of the status message based on whether the waitlist time limit is positive or negative.
++        $afterOrPrior = $time_limit < 0 ? 'after' : 'prior';
++        $moreOrLess = $time_limit < 0 ? 'more' : 'less';
++        $details['ineligible_message'] = ts("Registration for this event cannot be cancelled or transferred %1 than %2 hours %3 to the event's start time. Contact the event organizer if you have questions.",
++        [1 => $moreOrLess, 2 => $cancelHours, 3 => $afterOrPrior]);
++
+       }
+     }
+     return $details;
+diff --git a/CRM/Upgrade/Incremental/MessageTemplates.php b/CRM/Upgrade/Incremental/MessageTemplates.php
+index 0b86bc6a6dc..94f932a96e5 100644
+--- a/CRM/Upgrade/Incremental/MessageTemplates.php
++++ b/CRM/Upgrade/Incremental/MessageTemplates.php
+@@ -215,6 +215,16 @@ protected function getTemplateUpdates() {
+           ['name' => 'contribution_invoice_receipt', 'type' => 'html'],
+         ],
+       ],
++      [
++        'version' => '5.30.alpha1',
++        'upgrade_descriptor' => ts('Support negative hours for cancellation/transfer'),
++        'templates' => [
++          ['name' => 'participant_confirm', 'type' => 'html'],
++          ['name' => 'participant_confirm', 'type' => 'text'],
++          ['name' => 'event_online_receipt', 'type' => 'html'],
++          ['name' => 'event_online_receipt', 'type' => 'text'],
++        ],
++      ],
+ 
+     ];
+   }
+diff --git a/templates/CRM/Event/Form/ManageEvent/Registration.hlp b/templates/CRM/Event/Form/ManageEvent/Registration.hlp
+index 2aa4f62db7d..8fba9c56a98 100644
+--- a/templates/CRM/Event/Form/ManageEvent/Registration.hlp
++++ b/templates/CRM/Event/Form/ManageEvent/Registration.hlp
+@@ -89,5 +89,5 @@
+   {ts}Cancellation or Transfer Time Limit{/ts}
+ {/htxt}
+ {htxt id="id-selfcancelxfer_time"}
+-  {ts}Number of hours prior to event start date to allow self-service cancellation or transfer. Enter 0 (or leave empty) to allow cancellation or transfer up until the event has started.{/ts}
++  {ts}Number of hours prior to event start date to allow self-service cancellation or transfer. Enter a negative number of hours to allow cancellation after the event starts. Enter 0 (or leave empty) to allow cancellation or transfer up until the event has started.{/ts}
+ {/htxt}

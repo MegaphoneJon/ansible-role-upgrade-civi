@@ -182,12 +182,41 @@
       strip: 1
     become: yes
 
-  - name: Fix cron slippage
+  - name: core#2004 groups field in profiles is sometimes wrong
     patch:
-      src: "{{role_path}}/files/cron-slippage.diff"
+      src: "{{role_path}}/files/core-2004.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
+
+  - name: PCPs should use WYSIWYG
+    patch:
+      src: "{{role_path}}/files/18411.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Member Contribution Details should have more custom fields
+    patch:
+      src: "{{role_path}}/files/18420.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: SMS Datepicker shouldn't be in the future
+    patch:
+      src: "{{role_path}}/files/18524.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+# This doesn't seem to work
+#  - name: Fix cron slippage
+#    patch:
+#      src: "{{role_path}}/files/cron-slippage.diff"
+#      basedir: "{{ civiroot }}"
+#      strip: 1
+#    become: yes
 
   - name: git add Civi + patches
     command: git add -v -A
