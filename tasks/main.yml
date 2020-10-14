@@ -210,6 +210,13 @@
       strip: 1
     become: yes
 
+
+  - name: Event participants aren't showing up
+    patch:
+      src: "{{role_path}}/files/18758.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
 # This doesn't seem to work
 #  - name: Fix cron slippage
 #    patch:
