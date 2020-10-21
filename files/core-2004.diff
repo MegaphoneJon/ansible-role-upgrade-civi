@@ -1,17 +1,8 @@
 diff --git a/CRM/Contact/Form/Edit/TagsAndGroups.php b/CRM/Contact/Form/Edit/TagsAndGroups.php
-index 9299246d..361311dc 100644
+index 73e9420dff..5fcbddb2ce 100644
 --- a/CRM/Contact/Form/Edit/TagsAndGroups.php
 +++ b/CRM/Contact/Form/Edit/TagsAndGroups.php
-@@ -93,7 +93,7 @@ class CRM_Contact_Form_Edit_TagsAndGroups {
-         $attributes['skiplabel'] = TRUE;
-         $elements = [];
-         $groupsOptions = [];
--        foreach ($groups as $id => $group) {
-+        foreach ($groups as $group) {
-           // make sure that this group has public visibility
-           if ($visibility &&
-             $group['visibility'] == 'User and User Admin Only'
-@@ -102,11 +102,11 @@ class CRM_Contact_Form_Edit_TagsAndGroups {
+@@ -103,11 +103,11 @@ class CRM_Contact_Form_Edit_TagsAndGroups {
            }
  
            if ($groupElementType == 'select') {
