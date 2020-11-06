@@ -175,48 +175,12 @@
       strip: 1
     become: yes
 
-  - name: Fix scheduled reminders to add'l recipients on deleted events
-    patch:
-      src: "{{role_path}}/files/17641.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: PCPs should use WYSIWYG
     patch:
       src: "{{role_path}}/files/18411.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-
-  - name: Member Contribution Details should have more custom fields
-    patch:
-      src: "{{role_path}}/files/18420.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: SMS Datepicker shouldn't be in the future
-    patch:
-      src: "{{role_path}}/files/18524.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-
-  - name: Event participants aren't showing up
-    patch:
-      src: "{{role_path}}/files/18758.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-# This doesn't seem to work
-#  - name: Fix cron slippage
-#    patch:
-#      src: "{{role_path}}/files/cron-slippage.diff"
-#      basedir: "{{ civiroot }}"
-#      strip: 1
-#    become: yes
 
   - name: git add Civi + patches
     command: git add -v -A
