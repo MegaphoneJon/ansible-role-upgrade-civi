@@ -182,6 +182,20 @@
       strip: 1
     become: yes
 
+  - name: Fix trailing/leading spaces in clickthrough tracking
+    patch:
+      src: "{{role_path}}/files/18965.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Fix zero-hour self-service cancellations
+    patch:
+      src: "{{role_path}}/files/18950.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: git add Civi + patches
     command: git add -v -A
     args:
