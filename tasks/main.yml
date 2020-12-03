@@ -175,13 +175,6 @@
       strip: 1
     become: yes
 
-  - name: PCPs should use WYSIWYG
-    patch:
-      src: "{{role_path}}/files/18411.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Fix trailing/leading spaces in clickthrough tracking
     patch:
       src: "{{role_path}}/files/18965.diff"
