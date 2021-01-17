@@ -8,7 +8,7 @@ $remoteExtensionList = $e->formatRemoteExtensionRows($localExtensionList);
 $upgradeableExtensions = [];
 $i = 0;
 foreach ($remoteExtensionList as $e) {
-  if ($e['is_upgradeable'] ?? FALSE) {
+  if ($e['upgradelink'] ?? FALSE) {
     $upgradeableExtensions[$i]['key'] = $e['file'];
     $upgradeableExtensions[$i]['name'] = $e['name'];
     $upgradeableExtensions[$i]['version'] = $e['version'];
