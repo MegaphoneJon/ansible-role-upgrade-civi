@@ -146,6 +146,7 @@
       basedir: "{{ civiroot }}/vendor/phpoffice/phpword"
       strip: 1
     become: yes
+    when: cms != "Drupal8"
 
   - name: Alphabetize report listing (Reporting#25)
     patch:
