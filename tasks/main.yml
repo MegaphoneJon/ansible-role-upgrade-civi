@@ -111,7 +111,7 @@
 
   - name: git config - user/email
     blockinfile:
-      path: "{{ webroot }}/.git/config"
+      path: "{{ gitroot }}/.git/config"
       block: |
         [user]
           email = none@megaphonetech.com
