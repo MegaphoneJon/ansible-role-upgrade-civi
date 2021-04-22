@@ -92,7 +92,7 @@
       dest: "{{ civiroot }}/.."
     become: yes
     become_user: "{{ run_as_user }}"
-    when: (cms == 'Drupal' or cms == 'Backdrop' and installed_version != civi_ver.content
+    when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
 
   - name: Unarchive the files into civiroot (.zip)
     unarchive:
