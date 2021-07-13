@@ -127,6 +127,13 @@
     become: yes
     become_user: "{{ run_as_user }}"
 
+  - name: Patch core#2687, failing smart group rebuilds
+    patch:
+      src: "{{role_path}}/files/20835.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
     patch:
       src: "{{role_path}}/files/14339.diff"

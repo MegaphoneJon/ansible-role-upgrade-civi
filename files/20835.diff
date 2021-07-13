@@ -1,0 +1,13 @@
+diff --git a/CRM/Contact/BAO/GroupContactCache.php b/CRM/Contact/BAO/GroupContactCache.php
+index 61c40739f00..740ba9b704f 100644
+--- a/CRM/Contact/BAO/GroupContactCache.php
++++ b/CRM/Contact/BAO/GroupContactCache.php
+@@ -129,6 +129,8 @@ public static function loadAll($groupIDs = NULL, $limit = 0) {
+       $groupIDs = (array) $groupIDs;
+     }
+ 
++    // Treat the default help text in Scheduled Jobs as equivalent to no limit.
++    $limit = (int) $limit;
+     $processGroupIDs = self::getGroupsNeedingRefreshing($groupIDs, $limit);
+ 
+     if (!empty($processGroupIDs)) {
