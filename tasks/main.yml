@@ -97,7 +97,7 @@
   - name: Unarchive the files into civiroot (.tar.gz)
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
-      dest: "{{ civiroot }}/.."
+      dest: "{{ civiroot | dirname }}"
     become: yes
     become_user: "{{ run_as_user }}"
     when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
@@ -105,7 +105,7 @@
   - name: Unarchive the files into civiroot (.zip)
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
-      dest: "{{ civiroot }}/../.."
+      dest: "{{ civiroot | dirname | dirname }}"
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms == 'WordPress' and installed_version != civi_ver.content
