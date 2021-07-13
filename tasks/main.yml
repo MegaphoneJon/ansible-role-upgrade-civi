@@ -86,6 +86,14 @@
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
+  - name: Delete the old Civi
+    file:
+      path: "{{ civiroot }}"
+      state: absent
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: cms != 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+
   - name: Unarchive the files into civiroot (.tar.gz)
     unarchive:
       src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
