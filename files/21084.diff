@@ -1,0 +1,14 @@
+diff --git a/Civi/Api4/Utils/CoreUtil.php b/Civi/Api4/Utils/CoreUtil.php
+index 7d27b9ea247f..0c9f9612a655 100644
+--- a/Civi/Api4/Utils/CoreUtil.php
++++ b/Civi/Api4/Utils/CoreUtil.php
+@@ -60,7 +60,8 @@ public static function getApiClass($entityName) {
+    * @return mixed
+    */
+   public static function getInfoItem(string $entityName, string $keyToReturn) {
+-    return self::getApiClass($entityName)::getInfo()[$keyToReturn] ?? NULL;
++    $className = self::getApiClass($entityName);
++    return $className ? $className::getInfo()[$keyToReturn] ?? NULL : NULL;
+   }
+ 
+   /**

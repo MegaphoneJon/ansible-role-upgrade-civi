@@ -1,87 +1,87 @@
 ---
+- name: git pull
+  git:
+    repo: "{{ git_repo_url }}"
+    dest: "{{ gitroot }}"
+    version: master
+    track_submodules: no
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: git_repo_name is not none
+
+- name: Get current git commit hash
+  command: git rev-parse HEAD
+  args:
+    chdir: "{{ webroot }}"
+  register: latest_commit
+  changed_when: FALSE
+  tags: upgrade-extensions
+
+- name: Get the latest CiviCRM version number
+  local_action:
+    module: uri
+    url: http://latest.civicrm.org/stable.php
+    return_content: yes
+  run_once: true
+  register: civi_ver
+
+# https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
+- name: Download stable versions of Civi
+  local_action:
+    module: get_url
+    url: "https://download.civicrm.org/{{ item }}"
+    dest: "/tmp/{{ item }}"
+  run_once: true
+  with_items:
+    - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
+    - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
+    - "civicrm-{{ civi_ver.content }}-wordpress.zip"
+
+- name: check installed CiviCRM version
+  xml:
+    path: "{{ civiroot }}/xml/version.xml"
+    xpath: /version/version_no
+    content: text
+  register: version_xml
+  changed_when: false
+
+- name: Set version number
+  set_fact:
+    installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
+
+- name: Find old database backups
+  find:
+    age: 1d
+    path: "{{ sqldumps_path }}"
+    patterns: "{{ crm_db_name }}.pre-*.sql.gz"
+    age_stamp: ctime
+  register: old_db_backups
+
+- name: Delete old database backups
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ old_db_backups.files }}"
+  when: old_db_backups.files is defined and old_db_backups.matched > 0
+
+- name: Check if db already exists
+  stat:
+    path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+  become: yes
+  register: existing_backup
+
+- name: Back up the databases
+  mysql_db:
+    state: dump
+    name: "{{ crm_db_name }}"
+    target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+    login_user: "{{ db_user }}"
+    login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: existing_backup.stat is defined and existing_backup.stat.exists == false
+
 - block:
-  - name: git pull
-    git:
-      repo: "{{ git_repo_url }}"
-      dest: "{{ gitroot }}"
-      version: master
-      track_submodules: no
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: git_repo_name is not none
-
-  - name: Get current git commit hash
-    command: git rev-parse HEAD
-    args:
-      chdir: "{{ webroot }}"
-    register: latest_commit
-    changed_when: FALSE
-    tags: upgrade-extensions
-
-  - name: Get the latest CiviCRM version number
-    local_action:
-      module: uri
-      url: http://latest.civicrm.org/stable.php
-      return_content: yes
-    run_once: true
-    register: civi_ver
-
-  # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
-  - name: Download stable versions of Civi
-    local_action:
-      module: get_url
-      url: "https://download.civicrm.org/{{ item }}"
-      dest: "/tmp/{{ item }}"
-    run_once: true
-    with_items:
-      - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
-      - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
-      - "civicrm-{{ civi_ver.content }}-wordpress.zip"
-
-  - name: check installed CiviCRM version
-    xml:
-      path: "{{ civiroot }}/xml/version.xml"
-      xpath: /version/version_no
-      content: text
-    register: version_xml
-    changed_when: false
-
-  - name: Set version number
-    set_fact:
-      installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
-
-  - name: Find old database backups
-    find:
-      age: 1d
-      path: "{{ webroot }}/../sql-dumps"
-      patterns: "{{ crm_db_name }}.pre-*.sql.gz"
-      age_stamp: ctime
-    register: old_db_backups
-
-  - name: Delete old database backups
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    with_items: "{{ old_db_backups.files }}"
-    when: old_db_backups.files is defined and old_db_backups.matched > 0
-
-  - name: Check if db already exists
-    stat:
-      path: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-    become: yes
-    register: existing_backup
-
-  - name: Back up the databases
-    mysql_db:
-      state: dump
-      name: "{{ crm_db_name }}"
-      target: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-      login_user: "{{ db_user }}"
-      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: existing_backup.stat is defined and existing_backup.stat.exists == false
-
   - name: Delete the old Civi
     file:
       path: "{{ civiroot }}"
@@ -89,6 +89,7 @@
     become: yes
     become_user: "{{ run_as_user }}"
     when: cms != 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+
 
   - name: Unarchive the files into civiroot (.tar.gz)
     unarchive:
@@ -144,6 +145,13 @@
       strip: 1
     become: yes
 
+  - name: Dedupe by website, PR#21168.  
+    patch:
+      src: "{{role_path}}/files/21168.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
       src: "{{role_path}}/files/14390.diff"
@@ -157,7 +165,13 @@
       basedir: "{{ civiroot }}/vendor/phpoffice/phpword"
       strip: 1
     become: yes
-    when: cms != "Drupal8"
+
+  - name: Don't crash scheduled reminders when you have multiple role IDs
+    patch:
+      src: "{{role_path}}/files/20981.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
 
   - name: Alphabetize report listing (Reporting#25)
     patch:
@@ -166,12 +180,12 @@
       strip: 1
     become: yes
 
-#  - name: Record failed PayPal Pro IPNs
-#    patch:
-#      src: "{{role_path}}/files/paypalprorecordfailed.diff"
-#      basedir: "{{ civiroot }}"
-#      strip: 1
-#    become: yes
+  #  - name: Record failed PayPal Pro IPNs
+  #    patch:
+  #      src: "{{role_path}}/files/paypalprorecordfailed.diff"
+  #      basedir: "{{ civiroot }}"
+  #      strip: 1
+  #    become: yes
 
   - name: event#26
     patch:
@@ -211,61 +225,60 @@
     when: internal_repo == "1" and (git_repo_push_url is search("ssh://"))
     changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
     failed_when: not(push_result.rc == 0)
+  when: cms != "Drupal8"
 
-  - name: Get a list of plugins that need updating
-    script: helpers/upgradeable-civi.php
-    args:
-      chdir: "{{ webroot }}"
-    register: extensions
-    changed_when: false
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
-    tags: upgrade-extensions
+- name: Get a list of plugins that need updating
+  script: helpers/upgradeable-civi.php
+  args:
+    chdir: "{{ webroot }}"
+  register: extensions
+  changed_when: false
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
+  tags: upgrade-extensions
 
-  - name: Upgrade Civi extensions
-    include_tasks:
-      file: civi-extensions.yml
-      apply:
-        tags: upgrade-extensions
-    with_items:
-      - "{{ extensions.stdout }}"
-    when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
-    tags: upgrade-extensions
+- name: Upgrade Civi extensions
+  include_tasks:
+    file: civi-extensions.yml
+    apply:
+      tags: upgrade-extensions
+  with_items:
+    - "{{ extensions.stdout }}"
+  when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
+  tags: upgrade-extensions
 
-  - name: Check for pending extension database updates
-    command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-    changed_when: false
-    register: pendingUpdates
-    tags: upgrade-extensions
+- name: Check for pending extension database updates
+  command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+  changed_when: false
+  register: pendingUpdates
+  tags: upgrade-extensions
 
-  - name: Run extension database updates
-    command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-    when: pendingUpdates.stdout == "true"
-    tags: upgrade-extensions
+- name: Run extension database updates
+  command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+  when: pendingUpdates.stdout == "true"
+  tags: upgrade-extensions
 
-  - name: Get git changelog
-    command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
-    args:
-      chdir: "{{ webroot }}"
-    register: changelog
-    changed_when: FALSE
-    when: latest_commit.stdout is defined and civicrm == 'Yes'
-    tags: upgrade-extensions
+- name: Get git changelog
+  command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
+  args:
+    chdir: "{{ webroot }}"
+  register: changelog
+  changed_when: FALSE
+  when: latest_commit.stdout is defined and civicrm == 'Yes'
+  tags: upgrade-extensions
 
-  - name: Print git changelog
-    debug:
-      var: changelog.stdout
-    changed_when: FALSE
-    when: latest_commit.stdout is defined and civicrm == 'Yes'
-    tags: upgrade-extensions
-
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
+- name: Print git changelog
+  debug:
+    var: changelog.stdout
+  changed_when: FALSE
+  when: latest_commit.stdout is defined and civicrm == 'Yes'
+  tags: upgrade-extensions

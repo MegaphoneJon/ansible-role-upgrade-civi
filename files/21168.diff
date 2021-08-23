@@ -1,0 +1,24 @@
+diff --git a/CRM/Dedupe/BAO/DedupeRule.php b/CRM/Dedupe/BAO/DedupeRule.php
+index 9d16d3331acf..16683b5e5ef1 100644
+--- a/CRM/Dedupe/BAO/DedupeRule.php
++++ b/CRM/Dedupe/BAO/DedupeRule.php
+@@ -91,6 +91,7 @@ public function sql() {
+       case 'civicrm_im':
+       case 'civicrm_openid':
+       case 'civicrm_phone':
++      case 'civicrm_website':
+         $id = 'contact_id';
+         break;
+ 
+diff --git a/CRM/Dedupe/BAO/DedupeRuleGroup.php b/CRM/Dedupe/BAO/DedupeRuleGroup.php
+index 5c95f9fabe36..ce14df0c5438 100644
+--- a/CRM/Dedupe/BAO/DedupeRuleGroup.php
++++ b/CRM/Dedupe/BAO/DedupeRuleGroup.php
+@@ -84,6 +84,7 @@ public static function supportedFields($requestedType) {
+         'civicrm_note',
+         'civicrm_openid',
+         'civicrm_phone',
++        'civicrm_website',
+       ];
+ 
+       foreach (['Individual', 'Organization', 'Household'] as $ctype) {
