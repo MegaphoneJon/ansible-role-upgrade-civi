@@ -8,6 +8,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: git_repo_name is not none
+  tags: upgrade-extensions
 
 - name: Get current git commit hash
   command: git rev-parse HEAD
@@ -237,6 +238,8 @@
   become_user: "{{ run_as_user }}"
   when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
   tags: upgrade-extensions
+
+- debug: var=extensions.stdout
 
 - name: Upgrade Civi extensions
   include_tasks:
