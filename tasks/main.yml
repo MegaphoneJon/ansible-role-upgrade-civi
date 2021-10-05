@@ -82,49 +82,56 @@
   become_user: "{{ run_as_user }}"
   when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
+- name: Delete the old Civi
+  file:
+    path: "{{ civiroot }}"
+    state: absent
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: cms != 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+
+
+- name: Unarchive the files into civiroot (.tar.gz)
+  unarchive:
+    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
+    dest: "{{ civiroot | dirname }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
+
+- name: Unarchive the files into civiroot (.zip)
+  unarchive:
+    src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
+    dest: "{{ civiroot | dirname | dirname }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: cms == 'WordPress' and installed_version != civi_ver.content
+
+- name: Update Civi via Composer
+  composer:
+    command: upgrade
+    arguments: civicrm/*
+    working_dir: "{{ gitroot }}"
+  when: cms == 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+  become: yes
+  become_user: "{{ run_as_user }}"
+
+- name: Upgrade the Civi DB
+  command: "cv -n upgrade:db --cwd {{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: installed_version != civi_ver.content
+
+- name: git config - user/email
+  blockinfile:
+    path: "{{ gitroot }}/.git/config"
+    block: |
+      [user]
+        email = none@megaphonetech.com
+        name = {{ run_as_user }} on {{ inventory_hostname }}
+  become: yes
+  become_user: "{{ run_as_user }}"
 - block:
-  - name: Delete the old Civi
-    file:
-      path: "{{ civiroot }}"
-      state: absent
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: cms != 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
-
-
-  - name: Unarchive the files into civiroot (.tar.gz)
-    unarchive:
-      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.tar.gz"
-      dest: "{{ civiroot | dirname }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
-
-  - name: Unarchive the files into civiroot (.zip)
-    unarchive:
-      src: "/tmp/civicrm-{{ civi_ver.content }}-{{ cms|lower }}.zip"
-      dest: "{{ civiroot | dirname | dirname }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: cms == 'WordPress' and installed_version != civi_ver.content
-
-  # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
-  - name: Upgrade the Civi DB
-    command: "cv -n upgrade:db --cwd {{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: installed_version != civi_ver.content
-
-  - name: git config - user/email
-    blockinfile:
-      path: "{{ gitroot }}/.git/config"
-      block: |
-        [user]
-          email = none@megaphonetech.com
-          name = {{ run_as_user }} on {{ inventory_hostname }}
-    become: yes
-    become_user: "{{ run_as_user }}"
-
   - name: Patch core#2687, failing smart group rebuilds
     patch:
       src: "{{role_path}}/files/20835.diff"
@@ -156,6 +163,20 @@
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
       src: "{{role_path}}/files/14390.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch financial#181, PR#21719. Recurring contributions with no line items break contact contribution tab.
+    patch:
+      src: "{{role_path}}/files/21681.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch core#2881, PR#21681.  can't have > 25 groups in a mailing
+    patch:
+      src: "{{role_path}}/files/21681.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -194,39 +215,38 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-
-  - name: git add Civi + patches
-    command: git add -v -A
-    args:
-      chdir: "{{ civiroot }}"
-    register: add_result
-    become: yes
-    become_user: "{{ run_as_user }}"
-    changed_when: add_result.stdout != ''
-    failed_when: add_result.stderr != ''
-
-
-  - name: git commit Civi + patches
-    command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
-    args:
-      chdir: "{{ civiroot }}"
-    register: commit_result
-    become: yes
-    become_user: "{{ run_as_user }}"
-    changed_when: commit_result.rc == 0
-    failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
-
-  - name: git push
-    command: git push --set-upstream origin master
-    args:
-      chdir: "{{ webroot }}"
-    register: push_result
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: internal_repo == "1" and (git_repo_push_url is search("ssh://"))
-    changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
-    failed_when: not(push_result.rc == 0)
   when: cms != "Drupal8"
+
+- name: git add Civi + patches
+  command: git add -v -A
+  args:
+    chdir: "{{ civiroot }}"
+  register: add_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: add_result.stdout != ''
+  failed_when: add_result.stderr != ''
+
+- name: git commit Civi + patches
+  command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
+  args:
+    chdir: "{{ civiroot }}"
+  register: commit_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: commit_result.rc == 0
+  failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+
+- name: git push
+  command: git push --set-upstream origin master
+  args:
+    chdir: "{{ webroot }}"
+  register: push_result
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: internal_repo == "1" and (git_repo_push_url is search("ssh://"))
+  changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
+  failed_when: not(push_result.rc == 0)
 
 - name: Get a list of plugins that need updating
   script: helpers/upgradeable-civi.php

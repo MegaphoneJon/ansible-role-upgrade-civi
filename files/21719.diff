@@ -1,0 +1,15 @@
+diff --git a/CRM/Contribute/BAO/ContributionRecur.php b/CRM/Contribute/BAO/ContributionRecur.php
+index 02d9c9e8cb5..7fd91065007 100644
+--- a/CRM/Contribute/BAO/ContributionRecur.php
++++ b/CRM/Contribute/BAO/ContributionRecur.php
+@@ -554,7 +554,9 @@ public static function getTemplateContribution(int $id, $overrides = []): array
+         unset($overrides['financial_type_id']);
+       }
+       $result = array_merge($templateContribution, $overrides);
+-      $result['line_item'][$order->getPriceSetID()] = $lineItems;
++      if ($lineItems) {
++        $result['line_item'][$order->getPriceSetID()] = $lineItems;
++      }
+       // If the template contribution was made on-behalf then add the
+       // relevant values to ensure the activity reflects that.
+       $relatedContact = CRM_Contribute_BAO_Contribution::getOnbehalfIds($result['id']);
