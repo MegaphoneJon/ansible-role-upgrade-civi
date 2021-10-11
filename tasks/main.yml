@@ -109,8 +109,8 @@
 
 - name: Update Civi via Composer
   composer:
-    command: upgrade
-    arguments: civicrm/*
+    command: require
+    arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
     working_dir: "{{ gitroot }}"
   when: cms == 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
   become: yes
@@ -131,14 +131,8 @@
         name = {{ run_as_user }} on {{ inventory_hostname }}
   become: yes
   become_user: "{{ run_as_user }}"
-- block:
-  - name: Patch core#2687, failing smart group rebuilds
-    patch:
-      src: "{{role_path}}/files/20835.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
 
+- block:
   - name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
     patch:
       src: "{{role_path}}/files/14339.diff"
@@ -153,13 +147,6 @@
       strip: 1
     become: yes
 
-  - name: Dedupe by website, PR#21168.  
-    patch:
-      src: "{{role_path}}/files/21168.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
       src: "{{role_path}}/files/14390.diff"
@@ -167,16 +154,9 @@
       strip: 1
     become: yes
 
-  - name: Patch financial#181, PR#21719. Recurring contributions with no line items break contact contribution tab.
+  - name: Patch financial#181, PR#21729. Recurring contributions with no line items break contact contribution tab.
     patch:
-      src: "{{role_path}}/files/21681.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch core#2881, PR#21681.  can't have > 25 groups in a mailing
-    patch:
-      src: "{{role_path}}/files/21681.diff"
+      src: "{{role_path}}/files/21729.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
