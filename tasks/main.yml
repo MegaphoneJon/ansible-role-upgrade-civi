@@ -147,6 +147,13 @@
       strip: 1
     become: yes
 
+  - name: Backport PR#21681, mailings break with > 25 groups
+    patch:
+      src: "{{role_path}}/files/21681.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
       src: "{{role_path}}/files/14390.diff"
