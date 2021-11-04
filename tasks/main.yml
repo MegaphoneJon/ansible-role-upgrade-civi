@@ -140,16 +140,9 @@
       strip: 1
     become: yes
 
-  - name: Patch reporting#18, PR#14982.  Current status is OPEN
+  - name: Patch reporting#18, PR#21975.  Current status is OPEN
     patch:
-      src: "{{role_path}}/files/14982.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Backport PR#21681, mailings break with > 25 groups
-    patch:
-      src: "{{role_path}}/files/21681.diff"
+      src: "{{role_path}}/files/21975.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -158,20 +151,6 @@
     patch:
       src: "{{role_path}}/files/14390.diff"
       basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch financial#181, PR#21729. Recurring contributions with no line items break contact contribution tab.
-    patch:
-      src: "{{role_path}}/files/21729.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PHPWord to allow spaces in filenames
-    patch:
-      src: "{{role_path}}/files/1674.diff"
-      basedir: "{{ civiroot }}/vendor/phpoffice/phpword"
       strip: 1
     become: yes
 
@@ -189,12 +168,13 @@
       strip: 1
     become: yes
 
-  #  - name: Record failed PayPal Pro IPNs
-  #    patch:
-  #      src: "{{role_path}}/files/paypalprorecordfailed.diff"
-  #      basedir: "{{ civiroot }}"
-  #      strip: 1
-  #    become: yes
+  - name: Allow alt text in contact image fields
+    patch:
+      src: "{{role_path}}/files/651.diff"
+      basedir: "{{ civiroot }}/drupal"
+      strip: 1
+    become: yes
+    when: cms == "Drupal"
 
   - name: event#26
     patch:
