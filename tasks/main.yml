@@ -147,6 +147,13 @@
       strip: 1
     become: yes
 
+  - name: Patch core#2942, map action regression in 5.43, closed upstream
+    patch:
+      src: "{{role_path}}/files/21980.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch core#1006, PR#14390.  Current status is OPEN
     patch:
       src: "{{role_path}}/files/14390.diff"
