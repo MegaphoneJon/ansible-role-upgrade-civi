@@ -147,9 +147,9 @@
       strip: 1
     become: yes
 
-  - name: Patch core#2942, map action regression in 5.43, closed upstream
+  - name: Patch core#2980, automated messages respect is_active
     patch:
-      src: "{{role_path}}/files/21980.diff"
+      src: "{{role_path}}/files/22208.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
