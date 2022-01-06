@@ -140,13 +140,6 @@
       strip: 1
     become: yes
 
-  - name: Patch reporting#18, PR#21975.  Current status is OPEN
-    patch:
-      src: "{{role_path}}/files/21975.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch core#2980, automated messages respect is_active
     patch:
       src: "{{role_path}}/files/22208.diff"
