@@ -161,6 +161,13 @@
       strip: 1
     become: yes
 
+  - name: Fix duplicate checking on 5.46
+    patch:
+      src: "{{role_path}}/files/22741.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Alphabetize report listing (Reporting#25)
     patch:
       src: "{{role_path}}/files/16259.diff"
