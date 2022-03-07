@@ -165,13 +165,6 @@
       strip: 1
     become: yes
 
-  - name: Fix duplicate checking on 5.46
-    patch:
-      src: "{{role_path}}/files/22741.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: More accurate determination of membership price set settings
     patch:
       src: "{{role_path}}/files/22825.diff"
@@ -182,6 +175,13 @@
   - name: Alphabetize report listing (Reporting#25)
     patch:
       src: "{{role_path}}/files/16259.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Disable timezone check when CiviEvent is disabled
+    patch:
+      src: "{{role_path}}/files/22898.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
