@@ -18,6 +18,11 @@
   changed_when: FALSE
   tags: upgrade-extensions
 
+# - name: Fake an older version of CiviCRM
+#   set_fact:
+#     civi_ver:
+#       content: "5.46.2"
+
 - name: Get the latest CiviCRM version number
   local_action:
     module: uri
@@ -120,7 +125,6 @@
   command: "cv -n upgrade:db --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: installed_version != civi_ver.content
 
 - name: git config - user/email
   blockinfile:
