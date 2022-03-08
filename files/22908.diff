@@ -1,0 +1,26 @@
+diff --git a/CRM/Contact/Form/Inline/Website.php b/CRM/Contact/Form/Inline/Website.php
+index aba4d13bec7..542e85319d5 100644
+--- a/CRM/Contact/Form/Inline/Website.php
++++ b/CRM/Contact/Form/Inline/Website.php
+@@ -30,7 +30,7 @@ class CRM_Contact_Form_Inline_Website extends CRM_Contact_Form_Inline {
+    * No of website blocks for inline edit.
+    * @var int
+    */
+-  private $_blockCount = 6;
++  private $_blockCount = 26;
+ 
+   /**
+    * Call preprocess.
+diff --git a/templates/CRM/Contact/Form/Inline/Website.tpl b/templates/CRM/Contact/Form/Inline/Website.tpl
+index c1400c82357..e5d5bf5838f 100644
+--- a/templates/CRM/Contact/Form/Inline/Website.tpl
++++ b/templates/CRM/Contact/Form/Inline/Website.tpl
+@@ -21,7 +21,7 @@
+     <tr>
+       <td>{ts}Website{/ts}
+         {help id="id-website" file="CRM/Contact/Form/Contact.hlp"}
+-        {if $actualBlockCount lt 5 }
++        {if $actualBlockCount lt 25 }
+           &nbsp;&nbsp;<span id="add-more-website" title="{ts}click to add more{/ts}"><a class="crm-hover-button action-item add-more-inline" href="#">{ts}add{/ts}</a></span>
+         {/if}
+       </td>
