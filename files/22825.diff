@@ -58,7 +58,7 @@ index f9bd0a36776..987c1b4929f 100644
 -          $this->_params['selectMembership'], 'duration_unit'
 -        );
 -      }
-+      $membershipTypeDetails = \Civi\Api4\MembershipType::get()
++      $membershipTypeDetails = \Civi\Api4\MembershipType::get(FALSE)
 +        ->addWhere('id', '=', $selectedMembershipTypeID)
 +        ->execute()
 +        ->first();

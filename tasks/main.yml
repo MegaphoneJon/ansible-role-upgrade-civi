@@ -273,14 +273,15 @@
   register: pendingUpdates
   tags: upgrade-extensions
 
-- name: Run extension database updates
-  command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
-  become: yes
-  become_user: "{{ run_as_user }}"
-  environment:
-    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-  when: pendingUpdates.stdout == "true"
-  tags: upgrade-extensions
+# To delete: This is provisionally a handler now.
+# - name: Run extension database updates
+#   command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
+#   become: yes
+#   become_user: "{{ run_as_user }}"
+#   environment:
+#     PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+#   when: pendingUpdates.stdout == "true"
+#   tags: upgrade-extensions
 
 - name: Get git changelog
   command: "git log --oneline {{ latest_commit.stdout }}..HEAD"

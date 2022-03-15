@@ -1,0 +1,6 @@
+- name: Apply extension database upgrades
+  command: "cv ext:upgrade-db"
+  args:
+    chdir: "{{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
