@@ -20,11 +20,6 @@
   changed_when: FALSE
   tags: upgrade-extensions
 
-# - name: Fake an older version of CiviCRM
-#   set_fact:
-#     civi_ver:
-#       content: "5.46.2"
-
 - name: Get the latest CiviCRM version number
   local_action:
     module: uri
@@ -32,6 +27,11 @@
     return_content: yes
   run_once: true
   register: civi_ver
+
+# - name: Fake an older version of CiviCRM
+#   set_fact:
+#     civi_ver:
+#       content: "5.47.4"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
