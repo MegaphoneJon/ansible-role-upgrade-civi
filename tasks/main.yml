@@ -28,10 +28,10 @@
   run_once: true
   register: civi_ver
 
-# - name: Fake an older version of CiviCRM
-#   set_fact:
-#     civi_ver:
-#       content: "5.47.4"
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "5.49.5"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -161,23 +161,9 @@
       strip: 1
     become: yes
 
-  - name: More accurate determination of membership price set settings
-    patch:
-      src: "{{role_path}}/files/22825.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Alphabetize report listing (Reporting#25)
     patch:
       src: "{{role_path}}/files/16259.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Disable "also include" on event reminders
-    patch:
-      src: "{{role_path}}/files/23101.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -189,13 +175,6 @@
       strip: 1
     become: yes
     when: cms == "Drupal"
-
-  - name: event#26
-    patch:
-      src: "{{role_path}}/files/events-26.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
   when: cms != "Drupal8"
 
 - name: git add Civi + patches
