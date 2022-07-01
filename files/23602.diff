@@ -1,5 +1,5 @@
 diff --git a/CRM/Event/ActionMapping.php b/CRM/Event/ActionMapping.php
-index 6a7f1ecda1a..58569f75eb3 100644
+index 6a7f1ecda1a..ae76bf3df2c 100644
 --- a/CRM/Event/ActionMapping.php
 +++ b/CRM/Event/ActionMapping.php
 @@ -149,8 +149,9 @@ public function createQuery($schedule, $phase, $defaultParams) {
@@ -8,7 +8,7 @@ index 6a7f1ecda1a..58569f75eb3 100644
          case 'participant_role':
 -          $query->where("e.role_id IN (#recipList)")
 -            ->param('recipList', \CRM_Utils_Array::explodePadded($schedule->recipient_listing));
-+          $regex = "([[:cntrl:]]|^)" . implode('([[:cntrl:]]|$)|([[:cntrl:]]|^)', (array) $schedule->recipient_listing) . "([[:cntrl:]]|$)";
++          $regex = "([[:cntrl:]]|^)" . implode('([[:cntrl:]]|$)|([[:cntrl:]]|^)', \CRM_Utils_Array::explodePadded($schedule->recipient_listing)) . "([[:cntrl:]]|$)";
 +          $query->where("e.role_id REGEXP (@regex)")
 +            ->param('regex', $regex);
            break;

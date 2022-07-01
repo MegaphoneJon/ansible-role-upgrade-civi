@@ -139,36 +139,42 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: Patch core#587, PR#14339.  Current status is OPEN (might be in 5.16)
+  - name: Patch PR#23296 - relationship creation in afform.  Merged in 5.51.
     patch:
-      src: "{{role_path}}/files/14339.diff"
+      src: "{{role_path}}/files/23296.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-
-  - name: Patch core#1006, PR#14390.  Current status is OPEN
+  - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
     patch:
       src: "{{role_path}}/files/14390.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Don't crash scheduled reminders when you have multiple role IDs
+  - name: Don't crash scheduled reminders when you have multiple role IDs (merged in 5.52).
     patch:
-      src: "{{role_path}}/files/20981.diff"
+      src: "{{role_path}}/files/23602.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Alphabetize report listing (Reporting#25)
+  - name: UFMatch in Search Kit (merged in 5.52)
+    patch:
+      src: "{{role_path}}/files/23723.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Alphabetize report listing (Reporting#25) (for Delta/WISCIENCE; Redmine#2562).
     patch:
       src: "{{role_path}}/files/16259.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Allow alt text in contact image fields
+  - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
       src: "{{role_path}}/files/651.diff"
       basedir: "{{ civiroot }}/drupal"
