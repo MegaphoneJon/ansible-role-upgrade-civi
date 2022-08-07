@@ -160,6 +160,13 @@
       strip: 1
     become: yes
   
+  - name: Fix contribution import on external or contact ID
+    patch:
+      src: "{{role_path}}/files/24166.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Hack From address on Wisc sites
     patch:
       src: "{{role_path}}/files/wiscmailfix.diff"

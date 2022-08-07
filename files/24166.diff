@@ -1,0 +1,14 @@
+diff --git a/CRM/Contribute/Import/Parser/Contribution.php b/CRM/Contribute/Import/Parser/Contribution.php
+index e244fe0fc36..5a70a83dac9 100644
+--- a/CRM/Contribute/Import/Parser/Contribution.php
++++ b/CRM/Contribute/Import/Parser/Contribution.php
+@@ -417,7 +417,8 @@ public function import($values): void {
+         $error = $this->checkContactDuplicate($paramValues);
+ 
+         if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
+-          $matchedIDs = explode(',', $error['error_message']['params'][0]);
++          $matchedIDs = $error['error_message']['params'];
++          $matchedIDs = is_array($matchedIDs) ? $matchedIDs : [$matchedIDs];
+           if (count($matchedIDs) > 1) {
+             throw new CRM_Core_Exception('Multiple matching contact records detected for this row. The contribution was not imported', CRM_Import_Parser::ERROR);
+           }
