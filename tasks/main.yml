@@ -31,7 +31,7 @@
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
-#      content: "5.49.5"
+#      content: "5.51.3"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -139,30 +139,9 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: Patch PR#23296 - relationship creation in afform.  Merged in 5.51.
-    patch:
-      src: "{{role_path}}/files/23296.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
     patch:
       src: "{{role_path}}/files/14390.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Don't crash scheduled reminders when you have multiple role IDs (merged in 5.52).
-    patch:
-      src: "{{role_path}}/files/23602.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: UFMatch in Search Kit (merged in 5.52)
-    patch:
-      src: "{{role_path}}/files/23723.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -173,6 +152,21 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
+
+  - name: Improved AfformSubmissions, #24080
+    patch:
+      src: "{{role_path}}/files/24080.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+  
+  - name: Hack From address on Wisc sites
+    patch:
+      src: "{{role_path}}/files/wiscmailfix.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+    when: inventory_hostname_short == 'delta' or inventory_hostname_short == 'wiscience'
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:

@@ -1,0 +1,36 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+index 3e453c52ea1..112957a85ff 100644
+--- a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
++++ b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+@@ -26,6 +26,15 @@ class Submit extends AbstractProcessor {
+   protected $values;
+ 
+   protected function processForm() {
++    // Save submission record
++    if (!empty($this->_afform['create_submission'])) {
++      $submission = AfformSubmission::create(FALSE)
++        ->addValue('contact_id', \CRM_Core_Session::getLoggedInContactID())
++        ->addValue('afform_name', $this->name)
++        ->addValue('data', $this->getValues())
++        ->execute()->first();
++    }
++
+     $entityValues = [];
+     foreach ($this->_formDataModel->getEntities() as $entityName => $entity) {
+       $entityValues[$entityName] = [];
+@@ -67,15 +76,6 @@ protected function processForm() {
+       \Civi::dispatcher()->dispatch('civi.afform.submit', $event);
+     }
+ 
+-    // Save submission record
+-    if (!empty($this->_afform['create_submission'])) {
+-      $submission = AfformSubmission::create(FALSE)
+-        ->addValue('contact_id', \CRM_Core_Session::getLoggedInContactID())
+-        ->addValue('afform_name', $this->name)
+-        ->addValue('data', $this->_entityIds)
+-        ->execute()->first();
+-    }
+-
+     // Return ids and a token for uploading files
+     return [
+       ['token' => $this->generatePostSubmitToken()] + $this->_entityIds,
