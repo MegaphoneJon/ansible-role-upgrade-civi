@@ -1,0 +1,61 @@
+diff --git a/CRM/Contribute/Import/Parser/Contribution.php b/CRM/Contribute/Import/Parser/Contribution.php
+index e244fe0fc36..9c4a4bbd249 100644
+--- a/CRM/Contribute/Import/Parser/Contribution.php
++++ b/CRM/Contribute/Import/Parser/Contribution.php
+@@ -417,7 +417,7 @@ public function import($values): void {
+         $error = $this->checkContactDuplicate($paramValues);
+ 
+         if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
+-          $matchedIDs = explode(',', $error['error_message']['params'][0]);
++          $matchedIDs = (array) $error['error_message']['params'];
+           if (count($matchedIDs) > 1) {
+             throw new CRM_Core_Exception('Multiple matching contact records detected for this row. The contribution was not imported', CRM_Import_Parser::ERROR);
+           }
+@@ -776,7 +776,7 @@ private function deprecatedFormatParams($params, &$values, $create = FALSE) {
+               $error = $this->checkContactDuplicate($params);
+ 
+               if (isset($error['error_message']['params'][0])) {
+-                $matchedIDs = explode(',', $error['error_message']['params'][0]);
++                $matchedIDs = (array) $error['error_message']['params'];
+ 
+                 // check if only one contact is found
+                 if (count($matchedIDs) > 1) {
+diff --git a/CRM/Event/Import/Parser/Participant.php b/CRM/Event/Import/Parser/Participant.php
+index 8afe963e82d..de5f53ef520 100644
+--- a/CRM/Event/Import/Parser/Participant.php
++++ b/CRM/Event/Import/Parser/Participant.php
+@@ -236,7 +236,7 @@ public function import(&$values) {
+         $error = $this->checkContactDuplicate($formatValues);
+ 
+         if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
+-          $matchedIDs = explode(',', $error['error_message']['params'][0]);
++          $matchedIDs = (array) $error['error_message']['params'];
+           if (count($matchedIDs) >= 1) {
+             foreach ($matchedIDs as $contactId) {
+               $formatted['contact_id'] = $contactId;
+diff --git a/CRM/Member/Import/Parser/Membership.php b/CRM/Member/Import/Parser/Membership.php
+index 45db615fcdf..5c6dbc9b22e 100644
+--- a/CRM/Member/Import/Parser/Membership.php
++++ b/CRM/Member/Import/Parser/Membership.php
+@@ -215,7 +215,7 @@ public function import($values) {
+         $error = $this->checkContactDuplicate($formatValues);
+ 
+         if (CRM_Core_Error::isAPIError($error, CRM_Core_ERROR::DUPLICATE_CONTACT)) {
+-          $matchedIDs = explode(',', $error['error_message']['params'][0]);
++          $matchedIDs = (array) $error['error_message']['params'];
+           if (count($matchedIDs) > 1) {
+             throw new CRM_Core_Exception('Multiple matching contact records detected for this row. The membership was not imported', CRM_Import_Parser::ERROR);
+           }
+diff --git a/CRM/Utils/DeprecatedUtils.php b/CRM/Utils/DeprecatedUtils.php
+index 4bfe2c71f43..7b9cb3f67da 100644
+--- a/CRM/Utils/DeprecatedUtils.php
++++ b/CRM/Utils/DeprecatedUtils.php
+@@ -48,7 +48,7 @@ function _civicrm_api3_deprecated_duplicate_formatted_contact($params) {
+         'is_error' => 1,
+         'error_message' => [
+           'code' => CRM_Core_Error::DUPLICATE_CONTACT,
+-          'params' => $contact->id,
++          'params' => [$contact->id],
+           'level' => 'Fatal',
+           'message' => "Found matching contacts: $contact->id",
+         ],
