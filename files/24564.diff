@@ -1,0 +1,38 @@
+diff --git a/CRM/Contribute/Form/ContributionBase.php b/CRM/Contribute/Form/ContributionBase.php
+index 964340fb3b4..849aad08186 100644
+--- a/CRM/Contribute/Form/ContributionBase.php
++++ b/CRM/Contribute/Form/ContributionBase.php
+@@ -577,6 +577,7 @@ public function assignToTemplate() {
+     }
+     $this->assignPaymentFields();
+     $this->assignEmailField();
++    $this->assign('emailExists', $this->_emailExists);
+ 
+     // also assign the receipt_text
+     if (isset($this->_values['receipt_text'])) {
+diff --git a/templates/CRM/Contribute/Form/Contribution/Confirm.tpl b/templates/CRM/Contribute/Form/Contribution/Confirm.tpl
+index 1beb28c2fe7..e9058c95bfe 100644
+--- a/templates/CRM/Contribute/Form/Contribution/Confirm.tpl
++++ b/templates/CRM/Contribute/Form/Contribution/Confirm.tpl
+@@ -225,7 +225,7 @@
+         </div>
+       {/if}
+     {/if}
+-    {if $email}
++    {if !$emailExists}
+       <div class="crm-group contributor_email-group">
+         <div class="header-dark">
+           {ts}Your Email{/ts}
+diff --git a/templates/CRM/Contribute/Form/Contribution/ThankYou.tpl b/templates/CRM/Contribute/Form/Contribution/ThankYou.tpl
+index c9ac6090e09..07ebf72e49a 100644
+--- a/templates/CRM/Contribute/Form/Contribution/ThankYou.tpl
++++ b/templates/CRM/Contribute/Form/Contribution/ThankYou.tpl
+@@ -255,7 +255,7 @@
+         </div>
+       {/if}
+     {/if}
+-    {if $email}
++    {if !$emailExists}
+       <div class="crm-group contributor_email-group">
+         <div class="header-dark">
+           {ts}Your Email{/ts}
