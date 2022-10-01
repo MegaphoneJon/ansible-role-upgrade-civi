@@ -3,9 +3,10 @@
   file:
     path: "{{ webroot }}"
     state: directory
-    mode: 02770
+    mode: ug+rw
     owner: "{{ run_as_user }}"
     group: "{{ run_as_user }}"
+    recurse: yes
   become: yes
 
 - name: git pull
@@ -155,6 +156,13 @@
       strip: 1
     become: yes
 
+  - name: Required field validation in afform (merged for 5.54)
+    patch:
+      src: "{{role_path}}/files/23604.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Alphabetize report listing (Reporting#25) (for Delta/WISCIENCE; Redmine#2562).
     patch:
       src: "{{role_path}}/files/16259.diff"
@@ -162,9 +170,9 @@
       strip: 1
     become: yes
 
-  - name: Fix crmSelect2 to work with ngOptions
+  - name: Autocomplete on Form Builder, merged in 5.54
     patch:
-      src: "{{role_path}}/files/24224.diff"
+      src: "{{role_path}}/files/24165.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -172,6 +180,13 @@
   - name: Improved AfformSubmissions, #24080
     patch:
       src: "{{role_path}}/files/24080.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Don't show email twice on contribution pages, #24564
+    patch:
+      src: "{{role_path}}/files/24564.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
