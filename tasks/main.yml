@@ -8,12 +8,12 @@
     group: "{{ run_as_user }}"
     recurse: yes
   become: yes
+  tags: upgrade-extensions
 
 - name: git pull
   git:
     repo: "{{ git_repo_url }}"
     dest: "{{ gitroot }}"
-    version: "{{ git_main_branch }}"
     track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
@@ -163,16 +163,9 @@
       strip: 1
     become: yes
 
-  - name: Improved AfformSubmissions, #24080 (closed in 5.55)
+  - name: Fix core#4027 - crash when missing line items on a recurring contribution "template"
     patch:
-      src: "{{role_path}}/files/24080.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Don't show email twice on contribution pages, #24564 (closed in 5.55)
-    patch:
-      src: "{{role_path}}/files/24564.diff"
+      src: "{{role_path}}/files/25145.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
