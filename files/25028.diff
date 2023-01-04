@@ -1,0 +1,15 @@
+diff --git a/Civi/Api4/Utils/FormattingUtil.php b/Civi/Api4/Utils/FormattingUtil.php
+index 59c2f1e8df7..055dca59d7f 100644
+--- a/Civi/Api4/Utils/FormattingUtil.php
++++ b/Civi/Api4/Utils/FormattingUtil.php
+@@ -115,6 +115,10 @@ public static function formatInputValue(&$value, ?string $fieldName, array $fiel
+     if ($suffix) {
+       $options = self::getPseudoconstantList($fieldSpec, $fieldName, $params, $operator ? 'get' : 'create');
+       $value = self::replacePseudoconstant($options, $value, TRUE);
++      // If all the pseudoconstant lookups fail, we want to return no API results, not an exception.
++      if (!$value) {
++        $value[0] = FALSE;
++      }
+       return;
+     }
+     elseif (is_array($value)) {

@@ -163,6 +163,20 @@
       strip: 1
     become: yes
 
+  - name: Backport PR#25028 - don't crash API4 when pseudoconstant lookups return nothing
+    patch:
+      src: "{{role_path}}/files/25028.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Fix core#4036 - crash on "New Batch" page.
+    patch:
+      src: "{{role_path}}/files/25189.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+  
   - name: Fix core#4027 - crash when missing line items on a recurring contribution "template"
     patch:
       src: "{{role_path}}/files/25145.diff"

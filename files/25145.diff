@@ -1,0 +1,16 @@
+diff --git a/CRM/Financial/BAO/Order.php b/CRM/Financial/BAO/Order.php
+index a2ae54e8c38..f1ed6c04da2 100644
+--- a/CRM/Financial/BAO/Order.php
++++ b/CRM/Financial/BAO/Order.php
+@@ -838,7 +838,10 @@ protected function calculateLineItems(): array {
+       // Set the price set ID from the first line item (we need to set this here
+       // to prevent a loop later when we retrieve the price field metadata to
+       // set the 'title' (as accessed from workflow message templates).
+-      $this->setPriceSetID($lineItems[0]['price_field_id.price_set_id']);
++      // Contributions *should* all have line items, but historically, imports did not create them.
++      if ($lineItems) {
++        $this->setPriceSetID($lineItems[0]['price_field_id.price_set_id']);
++      }
+     }
+     else {
+       foreach ($this->getPriceOptions() as $fieldID => $valueID) {

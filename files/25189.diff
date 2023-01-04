@@ -1,0 +1,18 @@
+diff --git a/CRM/Batch/Form/Batch.php b/CRM/Batch/Form/Batch.php
+index 3f4b34af524..2f53b43f6ce 100644
+--- a/CRM/Batch/Form/Batch.php
++++ b/CRM/Batch/Form/Batch.php
+@@ -18,6 +18,13 @@ class CRM_Batch_Form_Batch extends CRM_Admin_Form {
+ 
+   protected $submittableMoneyFields = ['total'];
+ 
++  /**
++   * Explicitly declare the entity api name.
++   */
++  public function getDefaultEntity() {
++    return 'Batch';
++  }
++
+   /**
+    * PreProcess function.
+    */
