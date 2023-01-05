@@ -8,12 +8,12 @@
     group: "{{ run_as_user }}"
     recurse: yes
   become: yes
-  tags: upgrade-extensions
 
 - name: git pull
   git:
     repo: "{{ git_repo_url }}"
     dest: "{{ gitroot }}"
+    version: "{{ git_main_branch }}"
     track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
@@ -38,10 +38,10 @@
   run_once: true
   register: civi_ver
 
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "5.51.3"
+- name: Fake an older version of CiviCRM
+  set_fact:
+    civi_ver:
+      content: "5.56.2"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -163,27 +163,6 @@
       strip: 1
     become: yes
 
-  - name: Backport PR#25028 - don't crash API4 when pseudoconstant lookups return nothing
-    patch:
-      src: "{{role_path}}/files/25028.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Fix core#4036 - crash on "New Batch" page.
-    patch:
-      src: "{{role_path}}/files/25189.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-  
-  - name: Fix core#4027 - crash when missing line items on a recurring contribution "template"
-    patch:
-      src: "{{role_path}}/files/25145.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-  
   - name: Hack From address on Wisc sites
     patch:
       src: "{{role_path}}/files/wiscmailfix.diff"
