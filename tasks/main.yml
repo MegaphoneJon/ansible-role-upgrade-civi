@@ -38,10 +38,10 @@
   run_once: true
   register: civi_ver
 
-- name: Fake an older version of CiviCRM
-  set_fact:
-    civi_ver:
-      content: "5.56.2"
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "5.56.2"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -149,6 +149,13 @@
   become_user: "{{ run_as_user }}"
 
 - block:
+  - name: Patch PR#25028.  Don't crash API4 if pseudoconstant lookups return nothing.
+    patch:
+      src: "{{role_path}}/files/25028.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
     patch:
       src: "{{role_path}}/files/14390.diff"
@@ -163,13 +170,13 @@
       strip: 1
     become: yes
 
-  - name: Hack From address on Wisc sites
-    patch:
-      src: "{{role_path}}/files/wiscmailfix.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-    when: inventory_hostname_short == 'delta' or inventory_hostname_short == 'wiscience'
+#  - name: Hack From address on Wisc sites
+#    patch:
+#      src: "{{role_path}}/files/wiscmailfix.diff"
+#      basedir: "{{ civiroot }}"
+#      strip: 1
+#    become: yes
+#    when: inventory_hostname_short == 'delta' or inventory_hostname_short == 'wiscience'
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
