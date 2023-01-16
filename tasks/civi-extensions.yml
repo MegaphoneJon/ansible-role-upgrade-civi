@@ -28,7 +28,7 @@
   failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
 
 - name: git push
-  command: "git push --set-upstream origin {{ git_main_branch }}"
+  command: "git push"
   args:
     chdir: "{{ webroot }}"
   register: push_result
