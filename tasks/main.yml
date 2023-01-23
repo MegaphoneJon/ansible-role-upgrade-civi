@@ -149,6 +149,13 @@
   become_user: "{{ run_as_user }}"
 
 - block:
+  - name: Patch PR#25309. Respect default return path in Flexmailer.
+    patch:
+      src: "{{role_path}}/files/25309.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#25028.  Don't crash API4 if pseudoconstant lookups return nothing.
     patch:
       src: "{{role_path}}/files/25028.diff"
@@ -170,13 +177,19 @@
       strip: 1
     become: yes
 
-#  - name: Hack From address on Wisc sites
-#    patch:
-#      src: "{{role_path}}/files/wiscmailfix.diff"
-#      basedir: "{{ civiroot }}"
-#      strip: 1
-#    become: yes
-#    when: inventory_hostname_short == 'delta' or inventory_hostname_short == 'wiscience'
+  - name: FormBuilder autocomplete broken
+    patch:
+      src: "{{role_path}}/files/25374.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: PHP8 specialhtmlchars fix (should be in 5.58)
+    patch:
+      src: "{{role_path}}/files/356.diff"
+      basedir: "{{ civiroot }}/packages"
+      strip: 1
+    become: yes
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
@@ -228,8 +241,6 @@
   become_user: "{{ run_as_user }}"
   when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
   tags: upgrade-extensions
-
-- debug: var=extensions.stdout
 
 - name: Upgrade Civi extensions
   include_tasks:
