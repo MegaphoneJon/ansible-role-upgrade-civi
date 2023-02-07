@@ -67,38 +67,6 @@
   set_fact:
     installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
 
-- name: Find old database backups
-  find:
-    age: 1d
-    path: "{{ sqldumps_path }}"
-    patterns: "{{ crm_db_name }}.pre-*.sql.gz"
-    age_stamp: ctime
-  register: old_db_backups
-
-- name: Delete old database backups
-  file:
-    path: "{{ item.path }}"
-    state: absent
-  with_items: "{{ old_db_backups.files }}"
-  when: old_db_backups.files is defined and old_db_backups.matched > 0
-
-- name: Check if db already exists
-  stat:
-    path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-  become: yes
-  register: existing_backup
-
-- name: Back up the databases
-  mysql_db:
-    state: dump
-    name: "{{ crm_db_name }}"
-    target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-    login_user: "{{ db_user }}"
-    login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-  become: yes
-  become_user: "{{ run_as_user }}"
-  when: existing_backup.stat is defined and existing_backup.stat.exists == false
-
 - name: Delete the old Civi
   file:
     path: "{{ civiroot }}"
@@ -149,6 +117,13 @@
   become_user: "{{ run_as_user }}"
 
 - block:
+#  - name: Patch PR#25458. Calculate lifetime memberships better.
+#    patch:
+#      src: "{{role_path}}/files/25458.diff"
+#      basedir: "{{ civiroot }}"
+#      strip: 1
+#    become: yes
+    
   - name: Patch PR#25309. Respect default return path in Flexmailer.
     patch:
       src: "{{role_path}}/files/25309.diff"
