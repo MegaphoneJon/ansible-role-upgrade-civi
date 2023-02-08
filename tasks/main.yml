@@ -152,20 +152,6 @@
       strip: 1
     become: yes
 
-  - name: FormBuilder autocomplete broken
-    patch:
-      src: "{{role_path}}/files/25374.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PHP8 specialhtmlchars fix (should be in 5.58)
-    patch:
-      src: "{{role_path}}/files/356.diff"
-      basedir: "{{ civiroot }}/packages"
-      strip: 1
-    become: yes
-
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
       src: "{{role_path}}/files/651.diff"
