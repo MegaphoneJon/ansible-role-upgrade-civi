@@ -117,13 +117,34 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-#  - name: Patch PR#25458. Calculate lifetime memberships better.
-#    patch:
-#      src: "{{role_path}}/files/25458.diff"
-#      basedir: "{{ civiroot }}"
-#      strip: 1
-#    become: yes
-    
+  - name: Patch PR#25458. Calculate lifetime memberships better.
+    patch:
+      src: "{{role_path}}/files/25458.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Civi multilingual logging patch
+    patch:
+      src: "{{role_path}}/files/civimultilinguallogging.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: PR #25666 - validate file fields in FB
+    patch:
+      src: "{{role_path}}/files/25666.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: PR #25750 - participant status in FB
+    patch:
+      src: "{{role_path}}/files/25750.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#25309. Respect default return path in Flexmailer.
     patch:
       src: "{{role_path}}/files/25309.diff"
