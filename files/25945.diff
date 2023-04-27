@@ -1,0 +1,13 @@
+diff --git a/CRM/Event/Import/Parser/Participant.php b/CRM/Event/Import/Parser/Participant.php
+index 3c50b9ced06..bea3397f5e1 100644
+--- a/CRM/Event/Import/Parser/Participant.php
++++ b/CRM/Event/Import/Parser/Participant.php
+@@ -108,7 +108,7 @@ public function import(array $values): void {
+       // don't add to recent items, CRM-4399
+       $formatted['skipRecentView'] = TRUE;
+ 
+-      if (!(!empty($params['participant_role_id']) || !empty($params['participant_role']))) {
++      if (!(!empty($params['participant_role_id']) || !empty($params['participant_role']) || !empty($params['role_id']))) {
+         if (!empty($params['event_id'])) {
+           $params['participant_role_id'] = CRM_Core_DAO::getFieldValue('CRM_Event_DAO_Event', $params['event_id'], 'default_role_id');
+         }

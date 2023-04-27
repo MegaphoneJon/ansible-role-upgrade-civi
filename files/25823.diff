@@ -1,0 +1,13 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+index 1e886b126ae..821c408e4b1 100644
+--- a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
++++ b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+@@ -68,7 +68,7 @@ protected function processForm() {
+     \Civi::dispatcher()->dispatch('civi.afform.validate', $event);
+     $errors = $event->getErrors();
+     if ($errors) {
+-      throw new \CRM_Core_Exception(ts('Validation Error', ['plural' => '%1 Validation Errors', 'count' => count($errors)]), 0, ['validation' => $errors]);
++      throw new \CRM_Core_Exception(implode("\n", $errors));
+     }
+ 
+     // Save submission record
