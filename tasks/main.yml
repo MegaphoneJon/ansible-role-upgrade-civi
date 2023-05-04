@@ -131,20 +131,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#25900. Custom field import as "No".
-    patch:
-      src: "{{role_path}}/files/25900.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#25892. Fix permission on Contact.GetDuplicates
-    patch:
-      src: "{{role_path}}/files/25892.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#25535. Client-side Select2 validation.
     patch:
       src: "{{role_path}}/files/25535.diff"
@@ -173,30 +159,9 @@
       strip: 1
     become: yes
 
-  - name: PR#25666 - validate file fields in FB
-    patch:
-      src: "{{role_path}}/files/25666.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#25750 - participant status in FB
-    patch:
-      src: "{{role_path}}/files/25750.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: PR#25908 - respect 'add to group' from PCP signup
     patch:
       src: "{{role_path}}/files/25908.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#25028.  Don't crash API4 if pseudoconstant lookups return nothing.
-    patch:
-      src: "{{role_path}}/files/25028.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
