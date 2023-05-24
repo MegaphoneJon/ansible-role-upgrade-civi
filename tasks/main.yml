@@ -17,7 +17,7 @@
     track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
-  when: git_repo_name is not none
+  when: git_repo_url is not none
   tags: upgrade-extensions
 
 - name: Get current git commit hash
