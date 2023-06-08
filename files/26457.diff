@@ -1,0 +1,13 @@
+diff --git a/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php b/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
+index 3c467e11f57..88a27de1f1e 100644
+--- a/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
++++ b/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
+@@ -1217,7 +1217,7 @@ private function addFilterLabel($fieldName, $value) {
+       $labelField = CoreUtil::getInfoItem($field['fk_entity'], 'label_field');
+       if ($labelField) {
+         $records = civicrm_api4($field['fk_entity'], 'get', [
+-          'checkPermissions' => $this->checkPermissions,
++          'checkPermissions' => $this->checkPermissions && !($this->display['acl_bypass']),
+           'where' => [[$idField, 'IN', (array) $value]],
+           'select' => [$labelField],
+         ]);

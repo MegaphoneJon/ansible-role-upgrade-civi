@@ -124,9 +124,9 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#25945. Participant role id import.
+  - name: Patch PR#26398. Fix Mailsettings.testconnection.
     patch:
-      src: "{{role_path}}/files/25945.diff"
+      src: "{{role_path}}/files/26398.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -159,9 +159,23 @@
       strip: 1
     become: yes
 
+  - name: PR#26457 - fix SK ACL bypass issue
+    patch:
+      src: "{{role_path}}/files/26457.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: PR#26192 - SearchKit EntityRef joins
     patch:
       src: "{{role_path}}/files/26192.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: PR#25390 - PayPal fix processor_id
+    patch:
+      src: "{{role_path}}/files/25390.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -245,7 +259,7 @@
       tags: upgrade-extensions
   with_items:
     - "{{ extensions.stdout }}"
-  when: item is defined and item != "null" and item.key not in extension_blacklist and civicrm == 'Yes'
+  when: item is defined and item != "null" and item.key not in extension_redlist and civicrm == 'Yes'
   tags: upgrade-extensions
 
 - name: Check for pending extension database updates

@@ -1,0 +1,73 @@
+diff --git a/CRM/Core/Payment/PayPalProIPN.php b/CRM/Core/Payment/PayPalProIPN.php
+index 4dc98b5c315..46c333f23ab 100644
+--- a/CRM/Core/Payment/PayPalProIPN.php
++++ b/CRM/Core/Payment/PayPalProIPN.php
+@@ -264,21 +264,19 @@ public function recur(array $input): void {
+ 
+     //set transaction type
+     $txnType = $this->retrieve('txn_type', 'String');
++    $paypalIPNInitial = 'I-';
+     //Changes for paypal pro recurring payment
+     switch ($txnType) {
+       case 'recurring_payment_profile_created':
+         if (in_array(CRM_Core_PseudoConstant::getName('CRM_Contribute_BAO_ContributionRecur', 'contribution_status_id', $recur->contribution_status_id), [
+           'Pending', 'In Progress',
+-        ], TRUE)
+-          && !empty($recur->processor_id)
+-        ) {
++        ], TRUE) && substr($recur->processor_id, 0, 2) === $paypalIPNInitial) {
+           echo 'already handled';
+           return;
+         }
+         $recur->create_date = $now;
+         $recur->contribution_status_id = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_ContributionRecur', 'contribution_status_id', 'Pending');
+-        $recur->processor_id = $this->retrieve('recurring_payment_id', 'String');
+-        $recur->trxn_id = $recur->processor_id;
++        $recur->processor_id = $recur->trxn_id = $this->retrieve('recurring_payment_id', 'String');
+         $subscriptionPaymentStatus = CRM_Core_Payment::RECURRING_PAYMENT_START;
+         $sendNotification = TRUE;
+         break;
+@@ -288,7 +286,10 @@ public function recur(array $input): void {
+           if ($input['paymentStatus'] !== 'Completed') {
+             throw new CRM_Core_Exception('Ignore all IPN payments that are not completed');
+           }
+-
++          //Checks for past recurring contributions that did not get a processor_id that starts with 'I-', and corrects it if needed.
++          if (substr($recur->processor_id, 0, 2) !== $paypalIPNInitial) {
++            $recur->processor_id = $recur->trxn_id = $this->retrieve('recurring_payment_id', 'String');
++          }
+           // In future moving to create pending & then complete, but this OK for now.
+           // Also consider accepting 'Failed' like other processors.
+           $input['contribution_status_id'] = CRM_Core_PseudoConstant::getKey('CRM_Contribute_BAO_ContributionRecur', 'contribution_status_id', 'Completed');
+@@ -301,7 +302,7 @@ public function recur(array $input): void {
+         }
+ 
+         //contribution installment is completed
+-        if ($this->retrieve('profile_status', 'String') === 'Expired') {
++        elseif ($this->retrieve('profile_status', 'String') === 'Expired') {
+           if (!empty($recur->end_date)) {
+             echo 'already handled';
+             return;
+@@ -312,6 +313,10 @@ public function recur(array $input): void {
+           $subscriptionPaymentStatus = CRM_Core_Payment::RECURRING_PAYMENT_END;
+         }
+ 
++        if (!$first) {
++          $this->single($input);
++        }
++
+         break;
+     }
+ 
+@@ -326,11 +331,6 @@ public function recur(array $input): void {
+       );
+     }
+ 
+-    if ($txnType !== 'recurring_payment') {
+-      return;
+-    }
+-
+-    $this->single($input);
+   }
+ 
+   /**
