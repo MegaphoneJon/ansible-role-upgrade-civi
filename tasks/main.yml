@@ -37,6 +37,7 @@
     return_content: yes
   run_once: true
   register: civi_ver
+  become: no
 
 #- name: Fake an older version of CiviCRM
 #  set_fact:
@@ -54,6 +55,7 @@
     - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
     - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
     - "civicrm-{{ civi_ver.content }}-wordpress.zip"
+  become: no
 
 - name: check installed CiviCRM version
   xml:
