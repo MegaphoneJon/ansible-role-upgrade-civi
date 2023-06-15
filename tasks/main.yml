@@ -265,7 +265,7 @@
   tags: upgrade-extensions
 
 - name: Check for pending extension database updates
-  command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+  command: "cv ev --level=cms-full 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
   environment:
