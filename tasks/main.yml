@@ -104,7 +104,7 @@
   become_user: "{{ run_as_user }}"
 
 - name: Upgrade the Civi DB
-  command: "cv -n upgrade:db --cwd {{ webroot }}"
+  command: "cv -n upgrade:db --level=cms-full --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
 
