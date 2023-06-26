@@ -168,6 +168,13 @@
       strip: 1
     become: yes
 
+  - name: PR#26513 - CiviGrant API permissions issue
+    patch:
+      src: "{{role_path}}/files/26513.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: PR#26192 - SearchKit EntityRef joins
     patch:
       src: "{{role_path}}/files/26192.diff"
