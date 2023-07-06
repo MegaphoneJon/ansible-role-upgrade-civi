@@ -1,10 +1,10 @@
 diff --git a/CRM/Contribute/Form/Contribution/Confirm.php b/CRM/Contribute/Form/Contribution/Confirm.php
-index 891ebcbc5bc..7c04608ab61 100644
+index 5b28abd7af3..35317353e9d 100644
 --- a/CRM/Contribute/Form/Contribution/Confirm.php
 +++ b/CRM/Contribute/Form/Contribution/Confirm.php
-@@ -763,31 +763,27 @@ private function buildMembershipBlock($cid, $selectedMembershipTypeID = NULL, $i
-             $radio[$memType['id']] = NULL;
-             $radioOptAttrs[$memType['id']] = $javascriptMethod;
+@@ -753,29 +753,26 @@ private function buildMembershipBlock($cid, $selectedMembershipTypeID = NULL, $i
+             }
+ 
              if ($cid) {
 -              $membership = new CRM_Member_DAO_Membership();
 -              $membership->contact_id = $cid;
@@ -24,20 +24,18 @@ index 891ebcbc5bc..7c04608ab61 100644
 -              if ($membership->find(TRUE)) {
 -                if (!$membership->end_date) {
 +              $membership = \Civi\Api4\Membership::get(FALSE)
-+              ->addSelect('end_date', 'membership_type_id', 'membership_type_id.duration_unit:name')
++                ->addSelect('end_date', 'membership_type_id', 'membership_type_id.duration_unit:name')
 +                ->addWhere('contact_id', '=', $cid)
 +                ->addWhere('membership_type_id', '=', $memType['id'])
 +                ->addWhere('status_id:name', 'NOT IN', ['Cancelled', 'Pending'])
-+                ->addWhere('is_test', '=', $isTest)
++                ->addWhere('is_test', '=', (bool) $isTest)
 +                ->addOrderBy('end_date', 'DESC')
 +                ->execute()
 +                ->first();
 +
 +              if ($membership) {
 +                if ($membership["membership_type_id.duration_unit:name"] === 'lifetime') {
-                   unset($radio[$memType['id']]);
-                   unset($radioOptAttrs[$memType['id']]);
--                  $this->assign('islifetime', TRUE);
+                   $this->assign('islifetime', TRUE);
                    continue;
                  }
                  $this->assign('renewal_mode', TRUE);
@@ -49,10 +47,10 @@ index 891ebcbc5bc..7c04608ab61 100644
                    $endDate = $memType['current_membership'];
                    $this->_defaultMemTypeId = $memType['id'];
 diff --git a/CRM/Contribute/Form/Contribution/Main.php b/CRM/Contribute/Form/Contribution/Main.php
-index d09ea9c2533..a434dc7fd62 100644
+index b890f9f9808..bb42a56482c 100644
 --- a/CRM/Contribute/Form/Contribution/Main.php
 +++ b/CRM/Contribute/Form/Contribution/Main.php
-@@ -523,7 +523,6 @@ public function buildQuickForm() {
+@@ -500,7 +500,6 @@ public function buildQuickForm() {
    private function buildMembershipBlock() {
      $cid = $this->_membershipContactID;
      $isTest = (bool) ($this->_action & CRM_Core_Action::PREVIEW);
@@ -60,7 +58,7 @@ index d09ea9c2533..a434dc7fd62 100644
      $separateMembershipPayment = FALSE;
      $this->addOptionalQuickFormElement('auto_renew');
      if ($this->_membershipBlock) {
-@@ -600,31 +599,28 @@ private function buildMembershipBlock() {
+@@ -575,31 +574,28 @@ private function buildMembershipBlock() {
              $radio[$memType['id']] = NULL;
              $radioOptAttrs[$memType['id']] = $javascriptMethod;
              if ($cid) {
@@ -86,7 +84,7 @@ index d09ea9c2533..a434dc7fd62 100644
 +                ->addWhere('contact_id', '=', $cid)
 +                ->addWhere('membership_type_id', '=', $memType['id'])
 +                ->addWhere('status_id:name', 'NOT IN', ['Cancelled', 'Pending'])
-+                ->addWhere('is_test', '=', $isTest)
++                ->addWhere('is_test', '=', (bool) $isTest)
 +                ->addOrderBy('end_date', 'DESC')
 +                ->execute()
 +                ->first();
@@ -107,12 +105,12 @@ index d09ea9c2533..a434dc7fd62 100644
                    $endDate = $memType['current_membership'];
                    $this->_defaultMemTypeId = $memType['id'];
 diff --git a/CRM/Contribute/Form/Contribution/ThankYou.php b/CRM/Contribute/Form/Contribution/ThankYou.php
-index 8887d38f7f5..1e54f2abe79 100644
+index 85df7bdb86f..5eb6769dd14 100644
 --- a/CRM/Contribute/Form/Contribution/ThankYou.php
 +++ b/CRM/Contribute/Form/Contribution/ThankYou.php
-@@ -388,31 +388,27 @@ private function buildMembershipBlock($cid, $selectedMembershipTypeID = NULL, $i
-             $radio[$memType['id']] = NULL;
-             $radioOptAttrs[$memType['id']] = $javascriptMethod;
+@@ -381,29 +381,26 @@ private function buildMembershipBlock($cid, $selectedMembershipTypeID = NULL, $i
+ 
+             //add membership type.
              if ($cid) {
 -              $membership = new CRM_Member_DAO_Membership();
 -              $membership->contact_id = $cid;
@@ -136,16 +134,14 @@ index 8887d38f7f5..1e54f2abe79 100644
 +                ->addWhere('contact_id', '=', $cid)
 +                ->addWhere('membership_type_id', '=', $memType['id'])
 +                ->addWhere('status_id:name', 'NOT IN', ['Cancelled', 'Pending'])
-+                ->addWhere('is_test', '=', $isTest)
++                ->addWhere('is_test', '=', (bool) $isTest)
 +                ->addOrderBy('end_date', 'DESC')
 +                ->execute()
 +                ->first();
 +
 +              if ($membership) {
 +                if ($membership["membership_type_id.duration_unit:name"] === 'lifetime') {
-                   unset($radio[$memType['id']]);
-                   unset($radioOptAttrs[$memType['id']]);
--                  $this->assign('islifetime', TRUE);
+                   $this->assign('islifetime', TRUE);
                    continue;
                  }
                  $this->assign('renewal_mode', TRUE);
