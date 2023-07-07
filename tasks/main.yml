@@ -126,20 +126,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#26398. Fix Mailsettings.testconnection.
-    patch:
-      src: "{{role_path}}/files/26398.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#25535. Client-side Select2 validation.
-    patch:
-      src: "{{role_path}}/files/25535.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#25533 AND PR#25823. Log and display FormBuilder validation errors.
     patch:
       src: "{{role_path}}/files/25533.diff"
@@ -161,37 +147,9 @@
       strip: 1
     become: yes
 
-  - name: PR#26457 - fix SK ACL bypass issue
-    patch:
-      src: "{{role_path}}/files/26457.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#26513 - CiviGrant API permissions issue
-    patch:
-      src: "{{role_path}}/files/26513.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#26192 - SearchKit EntityRef joins
-    patch:
-      src: "{{role_path}}/files/26192.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: PR#25390 - PayPal fix processor_id
     patch:
       src: "{{role_path}}/files/25390.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#25908 - respect 'add to group' from PCP signup
-    patch:
-      src: "{{role_path}}/files/25908.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -203,12 +161,12 @@
       strip: 1
     become: yes
 
-  - name: Alphabetize report listing (Reporting#25) (for Delta/WISCIENCE; Redmine#2562).
-    patch:
-      src: "{{role_path}}/files/16259.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
+  # - name: Alphabetize report listing (Reporting#25) (for Delta/WISCIENCE; Redmine#2562).
+  #   patch:
+  #     src: "{{role_path}}/files/16259.diff"
+  #     basedir: "{{ civiroot }}"
+  #     strip: 1
+  #   become: yes
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
