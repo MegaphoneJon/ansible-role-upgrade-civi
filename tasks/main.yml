@@ -126,9 +126,9 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#25533 AND PR#25823. Log and display FormBuilder validation errors.
+  - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
-      src: "{{role_path}}/files/25533.diff"
+      src: "{{role_path}}/files/25823.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -204,11 +204,11 @@
   register: push_result
   become: yes
   become_user: "{{ run_as_user }}"
-  when: git_repo_push_url is search("ssh://")
+  when: git_repo_push_url is not search("https://")
   changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
   failed_when: not(push_result.rc == 0)
 
-- name: Get a list of plugins that need updating
+- name: Get a list of extensions that need updating
   script: helpers/upgradeable-civi.php
   args:
     chdir: "{{ webroot }}"

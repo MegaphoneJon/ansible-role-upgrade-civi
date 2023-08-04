@@ -48,26 +48,3 @@ index 4dc98b5c315..46c333f23ab 100644
            if (!empty($recur->end_date)) {
              echo 'already handled';
              return;
-@@ -312,6 +313,10 @@ public function recur(array $input): void {
-           $subscriptionPaymentStatus = CRM_Core_Payment::RECURRING_PAYMENT_END;
-         }
- 
-+        if (!$first) {
-+          $this->single($input);
-+        }
-+
-         break;
-     }
- 
-@@ -326,11 +331,6 @@ public function recur(array $input): void {
-       );
-     }
- 
--    if ($txnType !== 'recurring_payment') {
--      return;
--    }
--
--    $this->single($input);
-   }
- 
-   /**

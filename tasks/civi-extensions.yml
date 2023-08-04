@@ -34,6 +34,6 @@
   register: push_result
   become: yes
   become_user: "{{ run_as_user }}"
-  when: git_repo_push_url is search("ssh://")
+  when: git_repo_push_url is not search("https://")
   changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
   failed_when: not(push_result.rc == 0)

@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-eval(`cv php:boot`);
+eval(`cv --level=cms-full php:boot`);
 
 $e = new CRM_Admin_Page_Extensions();
 $localExtensionList = $e->formatLocalExtensionRows();
