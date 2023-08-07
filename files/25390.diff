@@ -4,10 +4,10 @@ Date:   Fri Aug 4 17:05:56 2023 -0400
 
     improved #25390 fix
 
-diff --git a/wp-content/plugins/civicrm/civicrm/CRM/Core/Payment/PayPalProIPN.php b/wp-content/plugins/civicrm/civicrm/CRM/Core/Payment/PayPalProIPN.php
+diff --git a/CRM/Core/Payment/PayPalProIPN.php b/CRM/Core/Payment/PayPalProIPN.php
 index 5b039d3b4..c861c3984 100644
---- a/wp-content/plugins/civicrm/civicrm/CRM/Core/Payment/PayPalProIPN.php
-+++ b/wp-content/plugins/civicrm/civicrm/CRM/Core/Payment/PayPalProIPN.php
+--- a/CRM/Core/Payment/PayPalProIPN.php
++++ b/CRM/Core/Payment/PayPalProIPN.php
 @@ -260,6 +260,8 @@ class CRM_Core_Payment_PayPalProIPN extends CRM_Core_Payment_BaseIPN {
      recurring_payment_suspended_due_to_max_failed_payment  RP Profile Suspended due to Max Failed Payment
       */
