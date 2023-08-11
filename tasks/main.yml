@@ -126,6 +126,13 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#27043. Scheduled Redminders fails when CiviContribute is disabled.
+    patch:
+      src: "{{role_path}}/files/27043.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
       src: "{{role_path}}/files/25823.diff"
