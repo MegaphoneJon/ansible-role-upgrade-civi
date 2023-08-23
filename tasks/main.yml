@@ -133,6 +133,20 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#26840 - numeric searches in autocomplete fixed
+    patch:
+      src: "{{role_path}}/files/26840.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#27071 - non-admins using Mailing widget
+    patch:
+      src: "{{role_path}}/files/27071.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#25458. Calculate lifetime memberships better.
     patch:
       src: "{{role_path}}/files/25458.diff"
