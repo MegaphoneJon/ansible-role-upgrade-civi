@@ -1,0 +1,25 @@
+diff --git a/CRM/Core/Config.php b/CRM/Core/Config.php
+index 7bee954f0..4fa621004 100644
+--- a/CRM/Core/Config.php
++++ b/CRM/Core/Config.php
+@@ -271,7 +271,9 @@ class CRM_Core_Config extends CRM_Core_Config_MagicMerge {
+     UserJob::delete(FALSE)->addWhere('expires_date', '<', 'now')->execute();
+     // clear all caches
+     self::clearDBCache();
+-    Civi::cache('session')->clear();
++    // [ML] SYMBIOTIC This causes problems if people are filling-in quickform
++    // forms during a system.flush
++    // Civi::cache('session')->clear();
+     Civi::cache('metadata')->clear();
+     CRM_Core_DAO_AllCoreTables::flush();
+     CRM_Utils_System::flushCache();
+@@ -329,7 +331,8 @@ class CRM_Core_Config extends CRM_Core_Config_MagicMerge {
+     $queries = [
+       'TRUNCATE TABLE civicrm_acl_cache',
+       'TRUNCATE TABLE civicrm_acl_contact_cache',
+-      'TRUNCATE TABLE civicrm_cache',
++      // [ML] SYMBIOTIC Reduce risks of losing a quickform session
++      // 'TRUNCATE TABLE civicrm_cache',
+       'TRUNCATE TABLE civicrm_prevnext_cache',
+       'UPDATE civicrm_group SET cache_date = NULL',
+       'TRUNCATE TABLE civicrm_group_contact_cache',

@@ -147,6 +147,13 @@
       strip: 1
     become: yes
 
+  - name: Don't clear session caches on cache clear.
+    patch:
+      src: "{{role_path}}/files/20190910-quickform-sessions.patch"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#25458. Calculate lifetime memberships better.
     patch:
       src: "{{role_path}}/files/25458.diff"
