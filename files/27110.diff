@@ -1,0 +1,37 @@
+diff --git a/ext/afform/admin/afformEntities/Note.php b/ext/afform/admin/afformEntities/Note.php
+new file mode 100644
+index 00000000000..a8a35545a24
+--- /dev/null
++++ b/ext/afform/admin/afformEntities/Note.php
+@@ -0,0 +1,5 @@
++<?php
++return [
++  'type' => 'join',
++  'repeat_max' => NULL,
++];
+diff --git a/ext/afform/core/ang/afblockContactNote.aff.html b/ext/afform/core/ang/afblockContactNote.aff.html
+new file mode 100644
+index 00000000000..d02d2f6408c
+--- /dev/null
++++ b/ext/afform/core/ang/afblockContactNote.aff.html
+@@ -0,0 +1,5 @@
++<div class="af-container af-layout-inline">
++    <af-field name="note" />
++    <af-field name="subject" />
++  </div>
++  
+\ No newline at end of file
+diff --git a/ext/afform/core/ang/afblockContactNote.aff.json b/ext/afform/core/ang/afblockContactNote.aff.json
+new file mode 100644
+index 00000000000..b3412870a73
+--- /dev/null
++++ b/ext/afform/core/ang/afblockContactNote.aff.json
+@@ -0,0 +1,7 @@
++{
++    "title": "Contact Note(s)",
++    "type": "block",
++    "entity_type": "Contact",
++    "join_entity": "Note"
++  }
++  
+\ No newline at end of file

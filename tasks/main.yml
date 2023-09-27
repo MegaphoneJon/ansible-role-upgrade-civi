@@ -39,10 +39,10 @@
   register: civi_ver
   become: no
 
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "5.56.2"
+# - name: Fake an older version of CiviCRM
+#   set_fact:
+#     civi_ver:
+#       content: "5.64.4"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -119,6 +119,27 @@
   become_user: "{{ run_as_user }}"
 
 - block:
+  - name: IPE speedup on SK.
+    patch:
+      src: "{{role_path}}/files/27105.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Fix bug in #27105
+    patch:
+      src: "{{role_path}}/files/27338.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Notes in Afform
+    patch:
+      src: "{{role_path}}/files/27110.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Create CMS user later.
     patch:
       src: "{{role_path}}/files/cmsuser.diff"
@@ -133,30 +154,9 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#26840 - numeric searches in autocomplete fixed
-    patch:
-      src: "{{role_path}}/files/26840.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#27071 - non-admins using Mailing widget
-    patch:
-      src: "{{role_path}}/files/27071.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Don't clear session caches on cache clear.
     patch:
       src: "{{role_path}}/files/20190910-quickform-sessions.patch"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#25458. Calculate lifetime memberships better.
-    patch:
-      src: "{{role_path}}/files/25458.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes

@@ -1,0 +1,311 @@
+diff --git a/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php b/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
+index 9631a1df1dd..f1ac4f94efd 100644
+--- a/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
++++ b/ext/search_kit/Civi/Api4/Action/SearchDisplay/AbstractRunAction.php
+@@ -708,7 +708,7 @@ private function getUrl(string $path, $query = NULL) {
+   /**
+    * @param array $column
+    * @param array $data
+-   * @return array{entity: string, action: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, record: array, value: mixed}|null
++   * @return array{entity: string, action: string, input_type: string, data_type: string, options: bool, serialize: bool, nullable: bool, fk_entity: string, value_key: string, record: array, value_path: string}|null
+    */
+   private function formatEditableColumn($column, $data) {
+     $editable = $this->getEditableInfo($column['key']);
+@@ -717,7 +717,6 @@ private function formatEditableColumn($column, $data) {
+     if (!empty($data[$editable['id_path']])) {
+       $editable['action'] = 'update';
+       $editable['record'][$editable['id_key']] = $data[$editable['id_path']];
+-      $editable['value'] = $data[$editable['value_path']];
+       // Ensure field is appropriate to this entity sub-type
+       $field = $this->getField($column['key']);
+       $entityValues = FormattingUtil::filterByPath($data, $editable['id_path'], $editable['id_key']);
+@@ -728,7 +727,6 @@ private function formatEditableColumn($column, $data) {
+     // Generate params to create new record, if applicable
+     elseif ($editable['explicit_join'] && !$this->getJoin($editable['explicit_join'])['bridge']) {
+       $editable['action'] = 'create';
+-      $editable['value'] = NULL;
+       $editable['nullable'] = FALSE;
+       // Get values for creation from the join clause
+       $join = $this->getQuery()->getExplicitJoin($editable['explicit_join']);
+@@ -778,8 +776,14 @@ private function formatEditableColumn($column, $data) {
+         'values' => $entityValues,
+       ], 0)['access'];
+       if ($access) {
++        // Add currency formatting info
++        if ($editable['data_type'] === 'Money') {
++          $currencyField = $this->getCurrencyField($column['key']);
++          $currency = is_string($data[$currencyField] ?? NULL) ? $data[$currencyField] : NULL;
++          $editable['currency_format'] = \Civi::format()->money(1234.56, $currency);
++        }
+         // Remove info that's for internal use only
+-        \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'value_path', 'explicit_join', 'grouping_fields');
++        \CRM_Utils_Array::remove($editable, 'id_key', 'id_path', 'explicit_join', 'grouping_fields');
+         return $editable;
+       }
+     }
+diff --git a/ext/search_kit/ang/crmSearchDisplay/colType/field.html b/ext/search_kit/ang/crmSearchDisplay/colType/field.html
+index 06678c917ac..ceb1664696b 100644
+--- a/ext/search_kit/ang/crmSearchDisplay/colType/field.html
++++ b/ext/search_kit/ang/crmSearchDisplay/colType/field.html
+@@ -1,10 +1,10 @@
+-<crm-search-display-editable row="row" col="colData" do-save="$ctrl.runSearch({inPlaceEdit: apiCall}, {}, row)" cancel="$ctrl.editing = null;" ng-if="colData.edit && $ctrl.editing && $ctrl.editing[0] === rowIndex && $ctrl.editing[1] === colIndex"></crm-search-display-editable>
+-<span ng-if="::!colData.links" ng-class="{'crm-editable-enabled': colData.edit && !$ctrl.editing, 'crm-editable-disabled': colData.edit && $ctrl.editing}" ng-click="colData.edit && !$ctrl.editing && ($ctrl.editing = [rowIndex, colIndex])">
++<crm-search-display-editable row="row" col="colData" cancel="$ctrl.editing = null;" ng-if="colData.edit && $ctrl.isEditing(rowIndex, colIndex)"></crm-search-display-editable>
++<span ng-if="!colData.links && !$ctrl.isEditing(rowIndex, colIndex)" ng-class="{'crm-editable-enabled': colData.edit && !$ctrl.editing, 'crm-editable-disabled': colData.edit && $ctrl.editing}" ng-click="colData.edit && !$ctrl.editing && ($ctrl.editing = [rowIndex, colIndex])">
+   <i ng-repeat="icon in colData.icons" ng-if="icon.side === 'left'" class="crm-i {{:: icon['class'] }}"></i>
+   {{:: $ctrl.formatFieldValue(colData) }}
+   <i ng-repeat="icon in colData.icons" ng-if="icon.side === 'right'" class="crm-i {{:: icon['class'] }}"></i>
+ </span>
+-<span ng-if="::colData.links">
++<span ng-if="colData.links && !$ctrl.isEditing(rowIndex, colIndex)">
+   <span ng-repeat="link in colData.links">
+     <a target="{{:: link.target }}" ng-href="{{:: link.url }}" title="{{:: link.title }}" ng-click="$ctrl.onClickLink(link, row.key, $event)">
+       <i ng-repeat="icon in colData.icons" ng-if="icon.side === 'left'" class="crm-i {{:: icon['class'] }}"></i>
+diff --git a/ext/search_kit/ang/crmSearchDisplay/crmSearchDisplayEditable.component.js b/ext/search_kit/ang/crmSearchDisplay/crmSearchDisplayEditable.component.js
+index cedb4db87d5..3a2488f7cf3 100644
+--- a/ext/search_kit/ang/crmSearchDisplay/crmSearchDisplayEditable.component.js
++++ b/ext/search_kit/ang/crmSearchDisplay/crmSearchDisplayEditable.component.js
+@@ -8,8 +8,7 @@
+     bindings: {
+       row: '<',
+       col: '<',
+-      cancel: '&',
+-      doSave: '&'
++      cancel: '&'
+     },
+     templateUrl: '~/crmSearchDisplay/crmSearchDisplayEditable.html',
+     controller: function($scope, $element, crmApi4) {
+@@ -19,8 +18,8 @@
+ 
+       this.$onInit = function() {
+         col = this.col;
+-        this.value = _.cloneDeep(col.edit.value);
+-        initialValue = _.cloneDeep(col.edit.value);
++        this.value = _.cloneDeep(this.row.data[col.edit.value_path]);
++        initialValue = _.cloneDeep(this.row.data[col.edit.value_path]);
+ 
+         this.field = {
+           data_type: col.edit.data_type,
+@@ -50,16 +49,52 @@
+       };
+ 
+       this.save = function() {
+-        if (ctrl.value === initialValue) {
+-          ctrl.cancel();
+-          return;
++        const value = formatDataType(ctrl.value);
++        if (value !== initialValue) {
++          col.edit.record[col.edit.value_key] = value;
++          CRM.status({}, crmApi4(col.edit.entity, col.edit.action, {values: col.edit.record}));
++          ctrl.row.data[col.edit.value_path] = value;
++          col.val = formatDisplayValue(value);
+         }
+-        var record = _.cloneDeep(col.edit.record);
+-        record[col.edit.value_key] = ctrl.value;
+-        $('input', $element).attr('disabled', true);
+-        ctrl.doSave({apiCall: [col.edit.entity, col.edit.action, {values: record}]});
++        ctrl.cancel();
+       };
+ 
++      function formatDataType(val) {
++        if (_.isArray(val)) {
++          const formatted = angular.copy(val);
++          formatted.forEach((v, i) => formatted[i] = formatDataType(v));
++          return formatted;
++        }
++        if (ctrl.field.data_type === 'Integer') {
++          return +val;
++        }
++        return val;
++      }
++
++      function formatDisplayValue(val) {
++        let displayValue = angular.copy(val);
++        if (_.isArray(displayValue)) {
++          displayValue.forEach((v, i) => displayValue[i] = formatDisplayValue(v));
++          return displayValue;
++        }
++        if (ctrl.field.options) {
++          ctrl.field.options.forEach((option) => {
++            if (('' + option.id) === ('' + val)) {
++              displayValue = option.label;
++            }
++          });
++        } else if (ctrl.field.data_type === 'Boolean' && val === true) {
++          displayValue = ts('Yes');
++        } else if (ctrl.field.data_type === 'Boolean' && val === false) {
++          displayValue = ts('No');
++        } else if (ctrl.field.data_type === 'Date' || ctrl.field.data_type === 'Timestamp') {
++          displayValue = CRM.utils.formatDate(val, null, ctrl.field.data_type === 'Timestamp');
++        } else if (ctrl.field.data_type === 'Money') {
++          displayValue = CRM.formatMoney(displayValue, false, col.edit.currency_format);
++        }
++        return displayValue;
++      }
++
+       function loadOptions() {
+         var cacheKey = col.edit.entity + ' ' + ctrl.field.name;
+         if (optionsCache[cacheKey]) {
+diff --git a/ext/search_kit/ang/crmSearchDisplay/traits/searchDisplayBaseTrait.service.js b/ext/search_kit/ang/crmSearchDisplay/traits/searchDisplayBaseTrait.service.js
+index 617a8a841ad..0cf2add6adc 100644
+--- a/ext/search_kit/ang/crmSearchDisplay/traits/searchDisplayBaseTrait.service.js
++++ b/ext/search_kit/ang/crmSearchDisplay/traits/searchDisplayBaseTrait.service.js
+@@ -201,6 +201,9 @@
+       },
+       formatFieldValue: function(colData) {
+         return angular.isArray(colData.val) ? colData.val.join(', ') : colData.val;
++      },
++      isEditing: function(rowIndex, colIndex) {
++        return this.editing && this.editing[0] === rowIndex && this.editing[1] === colIndex;
+       }
+     };
+   });
+diff --git a/ext/search_kit/css/crmSearchTasks.css b/ext/search_kit/css/crmSearchTasks.css
+index d70be29ffff..f6b6f6c795e 100644
+--- a/ext/search_kit/css/crmSearchTasks.css
++++ b/ext/search_kit/css/crmSearchTasks.css
+@@ -14,10 +14,6 @@
+   position: relative;
+ }
+ 
+-.crm-search-display crm-search-display-editable + span.crm-editable-disabled {
+-  display: none !important;
+-}
+-
+ .crm-search-display .crm-search-display-editable-buttons {
+   position: absolute;
+   bottom: -24px;
+diff --git a/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunTest.php b/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunTest.php
+index c55317d581b..95779aa75a8 100644
+--- a/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunTest.php
++++ b/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunTest.php
+@@ -553,7 +553,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[0]['columns'][0]['edit']['data_type']);
+     $this->assertEquals('first_name', $result[0]['columns'][0]['edit']['value_key']);
+     $this->assertEquals('update', $result[0]['columns'][0]['edit']['action']);
+-    $this->assertEquals('One', $result[0]['columns'][0]['edit']['value']);
++    $this->assertEquals('One', $result[0]['data'][$result[0]['columns'][0]['edit']['value_path']]);
+ 
+     // Contact 1 email can be updated
+     $this->assertEquals('testmail@unit.test', $result[0]['columns'][1]['val']);
+@@ -563,7 +563,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[0]['columns'][1]['edit']['data_type']);
+     $this->assertEquals('email', $result[0]['columns'][1]['edit']['value_key']);
+     $this->assertEquals('update', $result[0]['columns'][1]['edit']['action']);
+-    $this->assertEquals('testmail@unit.test', $result[0]['columns'][1]['edit']['value']);
++    $this->assertEquals('testmail@unit.test', $result[0]['data'][$result[0]['columns'][1]['edit']['value_path']]);
+ 
+     // Contact 1 - new phone can be created
+     $this->assertNull($result[0]['columns'][2]['val']);
+@@ -573,7 +573,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[0]['columns'][2]['edit']['data_type']);
+     $this->assertEquals('phone', $result[0]['columns'][2]['edit']['value_key']);
+     $this->assertEquals('create', $result[0]['columns'][2]['edit']['action']);
+-    $this->assertNull($result[0]['columns'][2]['edit']['value']);
++    $this->assertEquals('Contact_Phone_contact_id_01.phone', $result[0]['columns'][2]['edit']['value_path']);
+ 
+     // Contact 2 first name can be added
+     $this->assertNull($result[1]['columns'][0]['val']);
+@@ -583,7 +583,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[1]['columns'][0]['edit']['data_type']);
+     $this->assertEquals('first_name', $result[1]['columns'][0]['edit']['value_key']);
+     $this->assertEquals('update', $result[1]['columns'][0]['edit']['action']);
+-    $this->assertNull($result[1]['columns'][0]['edit']['value']);
++    $this->assertEquals('first_name', $result[1]['columns'][0]['edit']['value_path']);
+ 
+     // Contact 2 - new email can be created
+     $this->assertNull($result[1]['columns'][1]['val']);
+@@ -593,7 +593,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[1]['columns'][1]['edit']['data_type']);
+     $this->assertEquals('email', $result[1]['columns'][1]['edit']['value_key']);
+     $this->assertEquals('create', $result[1]['columns'][1]['edit']['action']);
+-    $this->assertNull($result[1]['columns'][1]['edit']['value']);
++    $this->assertEquals('Contact_Email_contact_id_01.email', $result[1]['columns'][1]['edit']['value_path']);
+ 
+     // Contact 2 phone can be updated
+     $this->assertEquals('123456', $result[1]['columns'][2]['val']);
+@@ -603,7 +603,7 @@ public function testInPlaceEditAndCreate() {
+     $this->assertEquals('String', $result[1]['columns'][2]['edit']['data_type']);
+     $this->assertEquals('phone', $result[1]['columns'][2]['edit']['value_key']);
+     $this->assertEquals('update', $result[1]['columns'][2]['edit']['action']);
+-    $this->assertEquals('123456', $result[1]['columns'][2]['edit']['value']);
++    $this->assertEquals('123456', $result[1]['data'][$result[0]['columns'][2]['edit']['value_path']]);
+   }
+ 
+   /**
+@@ -1499,7 +1499,7 @@ public function testEditableContactFields() {
+       'value_key' => 'first_name',
+       'record' => ['id' => $contact[0]['id']],
+       'action' => 'update',
+-      'value' => 'One',
++      'value_path' => 'first_name',
+     ];
+     // Ensure first_name is editable but not organization_name or household_name
+     $this->assertEquals($expectedFirstNameEdit, $result[0]['columns'][0]['edit']);
+@@ -1508,7 +1508,6 @@ public function testEditableContactFields() {
+ 
+     // Second Individual
+     $expectedFirstNameEdit['record']['id'] = $contact[1]['id'];
+-    $expectedFirstNameEdit['value'] = NULL;
+     $this->assertEquals($contact[1]['id'], $result[1]['key']);
+     $this->assertEquals($expectedFirstNameEdit, $result[1]['columns'][0]['edit']);
+     $this->assertTrue(!isset($result[1]['columns'][1]['edit']));
+@@ -1517,6 +1516,7 @@ public function testEditableContactFields() {
+     // Third contact: Organization
+     $expectedFirstNameEdit['record']['id'] = $contact[2]['id'];
+     $expectedFirstNameEdit['value_key'] = 'organization_name';
++    $expectedFirstNameEdit['value_path'] = 'organization_name';
+     $this->assertTrue(!isset($result[2]['columns'][0]['edit']));
+     $this->assertEquals($expectedFirstNameEdit, $result[2]['columns'][1]['edit']);
+     $this->assertTrue(!isset($result[2]['columns'][2]['edit']));
+@@ -1524,6 +1524,7 @@ public function testEditableContactFields() {
+     // Third contact: Household
+     $expectedFirstNameEdit['record']['id'] = $contact[3]['id'];
+     $expectedFirstNameEdit['value_key'] = 'household_name';
++    $expectedFirstNameEdit['value_path'] = 'household_name';
+     $this->assertTrue(!isset($result[3]['columns'][0]['edit']));
+     $this->assertTrue(!isset($result[3]['columns'][1]['edit']));
+     $this->assertEquals($expectedFirstNameEdit, $result[3]['columns'][2]['edit']);
+diff --git a/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunWithCustomFieldTest.php b/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunWithCustomFieldTest.php
+index 5096e3f03cf..2cf32ba633b 100644
+--- a/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunWithCustomFieldTest.php
++++ b/ext/search_kit/tests/phpunit/api/v4/SearchDisplay/SearchRunWithCustomFieldTest.php
+@@ -360,9 +360,9 @@ public function testEditableCustomFields() {
+       'value_key' => 'meeting_phone.sub_field',
+       'record' => ['id' => $activity[0]['id']],
+       'action' => 'update',
+-      'value' => 'Abc',
++      'value_path' => 'meeting_phone.sub_field',
+     ];
+-    $expectedSubjectEdit = ['value_key' => 'subject', 'value' => $subject] + $expectedCustomFieldEdit;
++    $expectedSubjectEdit = ['value_key' => 'subject', 'value_path' => 'subject'] + $expectedCustomFieldEdit;
+ 
+     // First Activity
+     $this->assertEquals($expectedSubjectEdit, $result[0]['columns'][0]['edit']);
+@@ -372,7 +372,6 @@ public function testEditableCustomFields() {
+     // Second Activity
+     $expectedSubjectEdit['record']['id'] = $activity[1]['id'];
+     $expectedCustomFieldEdit['record']['id'] = $activity[1]['id'];
+-    $expectedCustomFieldEdit['value'] = NULL;
+     $this->assertEquals($expectedSubjectEdit, $result[1]['columns'][0]['edit']);
+     $this->assertEquals($expectedCustomFieldEdit, $result[1]['columns'][1]['edit']);
+     $this->assertEquals($activityTypes['Phone Call'], $result[1]['data']['activity_type_id']);
+diff --git a/js/Common.js b/js/Common.js
+index 5521a863e71..928972794bc 100644
+--- a/js/Common.js
++++ b/js/Common.js
+@@ -1320,12 +1320,11 @@ if (!CRM.vars) CRM.vars = {};
+       }
+     }
+     return (deferred || new $.Deferred())
+-      .done(function(data) {
++      .then(function(data) {
+         // If the server returns an error msg call the error handler
+         var status = $.isPlainObject(data) && (data.is_error || data.status === 'error') ? 'error' : 'success';
+         handle(status, data);
+-      })
+-      .fail(function(data) {
++      }, function(data) {
+         handle('error', data);
+       });
+   };
