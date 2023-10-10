@@ -1,11 +1,13 @@
 #!/usr/bin/php
 <?php
-eval(`cv --level=cms-full php:boot`);
+eval(`cv --level=full php:boot`);
 
 /**
  * We want to inject our own URL so we can see extensions that aren't approved for automated distribution.
  */
 class myCRM_Extension_System extends CRM_Extension_System {
+
+  private $browser;
 
   public function getBrowser() {
     if ($this->browser === NULL) {

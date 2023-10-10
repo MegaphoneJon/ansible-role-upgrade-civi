@@ -133,6 +133,13 @@
       strip: 1
     become: yes
 
+  - name: Show Stripe messages for unauthenticated users
+    patch:
+      src: "{{role_path}}/files/27637.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Notes in Afform
     patch:
       src: "{{role_path}}/files/27110.diff"
