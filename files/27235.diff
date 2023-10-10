@@ -1,0 +1,121 @@
+diff --git a/CRM/Core/BAO/CustomField.php b/CRM/Core/BAO/CustomField.php
+index 8c7f3d0aa9e..9046d80a264 100644
+--- a/CRM/Core/BAO/CustomField.php
++++ b/CRM/Core/BAO/CustomField.php
+@@ -1075,6 +1075,10 @@ public static function addQuickFormElement(
+ 
+         $qf->assign('customUrls', $customUrls);
+         break;
++
++      case 'Hidden':
++        $element = $qf->add('hidden', $elementName);
++        break;
+     }
+ 
+     switch ($field->data_type) {
+@@ -1376,6 +1380,10 @@ private static function formatDisplayValue($value, $field, $entityId = NULL) {
+           $display = implode(', ', $values);
+         }
+         break;
++
++      case 'Hidden':
++        $display = '';
++        break;
+     }
+     return $display;
+   }
+diff --git a/CRM/Core/SelectValues.php b/CRM/Core/SelectValues.php
+index 87fa71eba7a..51497ec9f07 100644
+--- a/CRM/Core/SelectValues.php
++++ b/CRM/Core/SelectValues.php
+@@ -219,6 +219,11 @@ public static function customHtmlType() {
+         'name' => 'Link',
+         'label' => ts('Link'),
+       ],
++      [
++        'id' => 'Hidden',
++        'name' => 'Hidden',
++        'label' => ts('Hidden'),
++      ],
+     ];
+   }
+ 
+diff --git a/CRM/Custom/Form/Field.php b/CRM/Custom/Form/Field.php
+index a61292f666d..dfd77a6fb7f 100644
+--- a/CRM/Custom/Form/Field.php
++++ b/CRM/Custom/Form/Field.php
+@@ -58,10 +58,10 @@ class CRM_Custom_Form_Field extends CRM_Core_Form {
+    * @var array[]
+    */
+   public static $_dataToHTML = [
+-    'String' => ['Text', 'Select', 'Radio', 'CheckBox', 'Autocomplete-Select'],
+-    'Int' => ['Text', 'Select', 'Radio'],
+-    'Float' => ['Text', 'Select', 'Radio'],
+-    'Money' => ['Text', 'Select', 'Radio'],
++    'String' => ['Text', 'Select', 'Radio', 'CheckBox', 'Autocomplete-Select', 'Hidden'],
++    'Int' => ['Text', 'Select', 'Radio', 'Hidden'],
++    'Float' => ['Text', 'Select', 'Radio', 'Hidden'],
++    'Money' => ['Text', 'Select', 'Radio', 'Hidden'],
+     'Memo' => ['TextArea', 'RichTextEditor'],
+     'Date' => ['Select Date'],
+     'Boolean' => ['Radio'],
+diff --git a/Civi/Api4/Generic/BasicGetFieldsAction.php b/Civi/Api4/Generic/BasicGetFieldsAction.php
+index 895701f2adb..dae4a7b6a61 100644
+--- a/Civi/Api4/Generic/BasicGetFieldsAction.php
++++ b/Civi/Api4/Generic/BasicGetFieldsAction.php
+@@ -324,6 +324,7 @@ public function fields() {
+           'Email' => ts('Email'),
+           'EntityRef' => ts('Autocomplete Entity'),
+           'File' => ts('File'),
++          'Hidden' => ts('Hidden'),
+           'Location' => ts('Address Location'),
+           'Number' => ts('Number'),
+           'Radio' => ts('Radio Buttons'),
+diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
+index 69c304e5ab5..5c6cffc8849 100644
+--- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
++++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
+@@ -181,6 +181,7 @@
+             return !(defn.options || defn.data_type === 'Boolean');
+ 
+           case 'DisplayOnly':
++          case 'Hidden':
+             return true;
+ 
+           default:
+diff --git a/ext/afform/admin/ang/afGuiEditor/inputType/Hidden.html b/ext/afform/admin/ang/afGuiEditor/inputType/Hidden.html
+new file mode 100644
+index 00000000000..c19e65aec0f
+--- /dev/null
++++ b/ext/afform/admin/ang/afGuiEditor/inputType/Hidden.html
+@@ -0,0 +1 @@
++<div class="form-inline"></div>
+diff --git a/ext/afform/core/ang/af/fields/Hidden.html b/ext/afform/core/ang/af/fields/Hidden.html
+new file mode 100644
+index 00000000000..3a274235c05
+--- /dev/null
++++ b/ext/afform/core/ang/af/fields/Hidden.html
+@@ -0,0 +1 @@
++<input type="hidden" id="{{:: fieldId }}" ng-model="getSetValue" ng-model-options="{getterSetter: true}" >
+diff --git a/templates/CRM/Custom/Form/Field.tpl b/templates/CRM/Custom/Form/Field.tpl
+index 68733a0d087..4ae1b1ed538 100644
+--- a/templates/CRM/Custom/Form/Field.tpl
++++ b/templates/CRM/Custom/Form/Field.tpl
+@@ -270,7 +270,7 @@
+       }
+ 
+       if (_.includes(['String', 'Int', 'Float', 'Money'], dataType)) {
+-        if (htmlType !== "Text") {
++        if (!['Text', 'Hidden'].includes(htmlType)) {
+           $("#showoption, #searchable", $form).show();
+           $("#hideDefault, #hideDesc, #searchByRange", $form).hide();
+         } else {
+@@ -289,7 +289,7 @@
+         $("#showoption").hide();
+       }
+ 
+-      if (_.includes(['String', 'Int', 'Float', 'Money'], dataType) && htmlType !== 'Text') {
++      if (_.includes(['String', 'Int', 'Float', 'Money'], dataType) && !['Text', 'Hidden'].includes(htmlType)) {
+         if (serialize) {
+           $('div[id^=checkbox]', '#optionField').show();
+           $('div[id^=radio]', '#optionField').hide();

@@ -119,20 +119,6 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: IPE speedup on SK.
-    patch:
-      src: "{{role_path}}/files/27105.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Fix bug in #27105
-    patch:
-      src: "{{role_path}}/files/27338.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Show Stripe messages for unauthenticated users
     patch:
       src: "{{role_path}}/files/27637.diff"
@@ -140,9 +126,9 @@
       strip: 1
     become: yes
 
-  - name: Notes in Afform
+  - name: Hidden Custom Fields
     patch:
-      src: "{{role_path}}/files/27110.diff"
+      src: "{{role_path}}/files/27235.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
