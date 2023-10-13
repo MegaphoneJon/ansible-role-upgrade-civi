@@ -1,8 +1,8 @@
 diff --git a/CRM/Api4/Page/AJAX.php b/CRM/Api4/Page/AJAX.php
-index dee72c6f70..bea9ec4822 100644
+index dee72c6f70..fdd23cf0fc 100644
 --- a/CRM/Api4/Page/AJAX.php
 +++ b/CRM/Api4/Page/AJAX.php
-@@ -137,7 +137,7 @@ class CRM_Api4_Page_AJAX extends CRM_Core_Page {
+@@ -137,7 +137,8 @@ class CRM_Api4_Page_AJAX extends CRM_Core_Page {
        $status = $statusMap[get_class($e)] ?? 500;
        // Send error code (but don't overwrite success code if there are multiple calls and one was successful)
        $this->httpResponseCode = $this->httpResponseCode ?: $status;
