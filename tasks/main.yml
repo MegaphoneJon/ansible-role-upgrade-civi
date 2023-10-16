@@ -65,9 +65,9 @@
   register: version_xml
   changed_when: false
 
-- name: Set version number
-  set_fact:
-    installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
+#- name: Set version number
+#  set_fact:
+#    installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
 
 - name: Delete the old Civi
   file:
@@ -75,7 +75,7 @@
     state: absent
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms != 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+  when: cms != 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
 
 
 - name: Unarchive the files into civiroot (.tar.gz)
@@ -84,7 +84,7 @@
     dest: "{{ civiroot | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
+  when: (cms == 'Drupal' or cms == 'Backdrop') # and installed_version != civi_ver.content
 
 - name: Unarchive the files into civiroot (.zip)
   unarchive:
@@ -92,14 +92,14 @@
     dest: "{{ civiroot | dirname | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms == 'WordPress' and installed_version != civi_ver.content
+  when: cms == 'WordPress' # and installed_version != civi_ver.content
 
 - name: Update Civi via Composer
   composer:
     command: require
     arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
     working_dir: "{{ gitroot }}"
-  when: cms == 'Drupal8' and civicrm == 'Yes' and installed_version != civi_ver.content
+  when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
   become: yes
   become_user: "{{ run_as_user }}"
 
