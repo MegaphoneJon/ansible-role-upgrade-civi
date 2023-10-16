@@ -1,6 +1,8 @@
 #!/usr/bin/php
 <?php
 eval(`cv --level=full php:boot`);
+// We force a reload of the classloader to get PSR-4 declarations in extensions D8+ doesn't do this in php:boot).
+\CRM_Core_Config::singleton(TRUE, TRUE);
 
 /**
  * We want to inject our own URL so we can see extensions that aren't approved for automated distribution.
