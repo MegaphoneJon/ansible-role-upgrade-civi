@@ -1,8 +1,8 @@
 diff --git a/CRM/Core/BAO/CustomField.php b/CRM/Core/BAO/CustomField.php
-index 8c7f3d0aa9e..9046d80a264 100644
+index 619dbdb042a..6472813b53a 100644
 --- a/CRM/Core/BAO/CustomField.php
 +++ b/CRM/Core/BAO/CustomField.php
-@@ -1075,6 +1075,10 @@ public static function addQuickFormElement(
+@@ -1132,6 +1132,10 @@ public static function addQuickFormElement(
  
          $qf->assign('customUrls', $customUrls);
          break;
@@ -13,19 +13,17 @@ index 8c7f3d0aa9e..9046d80a264 100644
      }
  
      switch ($field->data_type) {
-@@ -1376,6 +1380,10 @@ private static function formatDisplayValue($value, $field, $entityId = NULL) {
-           $display = implode(', ', $values);
-         }
-         break;
-+
-+      case 'Hidden':
-+        $display = '';
-+        break;
-     }
-     return $display;
-   }
+@@ -2221,7 +2225,7 @@ protected static function prepareCreate($params) {
+ 
+     // create any option group & values if required
+     $allowedOptionTypes = ['String', 'Int', 'Float', 'Money'];
+-    if ($htmlType !== 'Text' && in_array($dataType, $allowedOptionTypes, TRUE)) {
++    if (!in_array($htmlType, ['Text', 'Hidden'], TRUE) && in_array($dataType, $allowedOptionTypes, TRUE)) {
+       //CRM-16659: if option_value then create an option group for this custom field.
+       // An option_type of 2 would be a 'message' from the form layer not to handle
+       // the option_values key. If not set then it is not ignored.
 diff --git a/CRM/Core/SelectValues.php b/CRM/Core/SelectValues.php
-index 87fa71eba7a..51497ec9f07 100644
+index 452e4b2556d..1eadb3f5bea 100644
 --- a/CRM/Core/SelectValues.php
 +++ b/CRM/Core/SelectValues.php
 @@ -219,6 +219,11 @@ public static function customHtmlType() {
@@ -41,7 +39,7 @@ index 87fa71eba7a..51497ec9f07 100644
    }
  
 diff --git a/CRM/Custom/Form/Field.php b/CRM/Custom/Form/Field.php
-index a61292f666d..dfd77a6fb7f 100644
+index 9a8c2e3d736..ece46e55555 100644
 --- a/CRM/Custom/Form/Field.php
 +++ b/CRM/Custom/Form/Field.php
 @@ -58,10 +58,10 @@ class CRM_Custom_Form_Field extends CRM_Core_Form {
@@ -59,11 +57,46 @@ index a61292f666d..dfd77a6fb7f 100644
      'Memo' => ['TextArea', 'RichTextEditor'],
      'Date' => ['Select Date'],
      'Boolean' => ['Radio'],
+diff --git a/CRM/Custom/Page/Field.php b/CRM/Custom/Page/Field.php
+index 8d6b6aefb65..188e48ed4d1 100644
+--- a/CRM/Custom/Page/Field.php
++++ b/CRM/Custom/Page/Field.php
+@@ -133,27 +133,9 @@ public function browse() {
+         $action -= CRM_Core_Action::DISABLE;
+       }
+ 
+-      switch ($customFieldBAO->data_type) {
+-        case "String":
+-        case "Int":
+-        case "Float":
+-        case "Money":
+-          // if Multi Select field is selected in custom field
+-          if ($customFieldBAO->html_type == 'Text') {
+-            $action -= CRM_Core_Action::BROWSE;
+-          }
+-          break;
+-
+-        case "ContactReference":
+-        case "Memo":
+-        case "Date":
+-        case "Boolean":
+-        case "StateProvince":
+-        case "Country":
+-        case "File":
+-        case "Link":
+-          $action -= CRM_Core_Action::BROWSE;
+-          break;
++      // Remove link to edit option group if there isn't one
++      if (!$customFieldBAO->option_group_id) {
++        $action -= CRM_Core_Action::BROWSE;
+       }
+ 
+       $customFieldDataType = array_column(CRM_Core_BAO_CustomField::dataType(), 'label', 'id');
 diff --git a/Civi/Api4/Generic/BasicGetFieldsAction.php b/Civi/Api4/Generic/BasicGetFieldsAction.php
-index 895701f2adb..dae4a7b6a61 100644
+index 2dc62f8cb08..07ba072000f 100644
 --- a/Civi/Api4/Generic/BasicGetFieldsAction.php
 +++ b/Civi/Api4/Generic/BasicGetFieldsAction.php
-@@ -324,6 +324,7 @@ public function fields() {
+@@ -325,6 +325,7 @@ public function fields() {
            'Email' => ts('Email'),
            'EntityRef' => ts('Autocomplete Entity'),
            'File' => ts('File'),
@@ -72,7 +105,7 @@ index 895701f2adb..dae4a7b6a61 100644
            'Number' => ts('Number'),
            'Radio' => ts('Radio Buttons'),
 diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
-index 69c304e5ab5..5c6cffc8849 100644
+index 8772532e281..1b9f03495db 100644
 --- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
 +++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.component.js
 @@ -181,6 +181,7 @@
@@ -97,8 +130,26 @@ index 00000000000..3a274235c05
 +++ b/ext/afform/core/ang/af/fields/Hidden.html
 @@ -0,0 +1 @@
 +<input type="hidden" id="{{:: fieldId }}" ng-model="getSetValue" ng-model-options="{getterSetter: true}" >
+diff --git a/templates/CRM/Custom/Form/Edit/CustomField.tpl b/templates/CRM/Custom/Form/Edit/CustomField.tpl
+index 24f0e5b7f44..34dd650732f 100644
+--- a/templates/CRM/Custom/Form/Edit/CustomField.tpl
++++ b/templates/CRM/Custom/Form/Edit/CustomField.tpl
+@@ -14,7 +14,12 @@
+     <td class="html-adjust description">{$element.help_pre}</td>
+   </tr>
+ {/if}
+-{if $element.options_per_line}
++{if $element.html_type === 'Hidden'}
++  {* Hidden field - render in hidden row *}
++  <tr class="custom_field-row {$element.element_name}-row hiddenElement">
++    <td>{$formElement.html}</td>
++  </tr>
++{elseif $element.options_per_line}
+   <tr class="custom_field-row {$element.element_name}-row">
+     <td class="label">{$formElement.label}{if $element.help_post}{help id=$element.id file="CRM/Custom/Form/CustomField.hlp" title=$element.label}{/if}</td>
+     <td class="html-adjust">
 diff --git a/templates/CRM/Custom/Form/Field.tpl b/templates/CRM/Custom/Form/Field.tpl
-index 68733a0d087..4ae1b1ed538 100644
+index 4792fdc39fb..e4476c64420 100644
 --- a/templates/CRM/Custom/Form/Field.tpl
 +++ b/templates/CRM/Custom/Form/Field.tpl
 @@ -270,7 +270,7 @@
