@@ -154,6 +154,13 @@
       strip: 1
     become: yes
 
+  - name: Search builder regex fix
+    patch:
+      src: "{{role_path}}/files/27865.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Civi multilingual logging patch
     patch:
       src: "{{role_path}}/files/civimultilinguallogging.diff"
