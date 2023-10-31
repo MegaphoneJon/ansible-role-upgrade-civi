@@ -119,6 +119,13 @@
   become_user: "{{ run_as_user }}"
 
 - block:
+  - name: strftime fix
+    patch:
+      src: "{{role_path}}/files/strftime.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Show Stripe messages for unauthenticated users
     patch:
       src: "{{role_path}}/files/27637.diff"
