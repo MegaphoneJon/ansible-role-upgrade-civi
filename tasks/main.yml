@@ -119,20 +119,6 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: strftime fix
-    patch:
-      src: "{{role_path}}/files/strftime.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Show Stripe messages for unauthenticated users
-    patch:
-      src: "{{role_path}}/files/27637.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Hidden Custom Fields
     patch:
       src: "{{role_path}}/files/27235.diff"
@@ -143,6 +129,20 @@
   - name: Create CMS user later.
     patch:
       src: "{{role_path}}/files/cmsuser.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#27996, CRM_Utils_Hook fix
+    patch:
+      src: "{{role_path}}/files/27996.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#28029, warn if outdated token exists in online event receipt
+    patch:
+      src: "{{role_path}}/files/28029.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -171,13 +171,6 @@
   - name: Civi multilingual logging patch
     patch:
       src: "{{role_path}}/files/civimultilinguallogging.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#25390 - PayPal fix processor_id
-    patch:
-      src: "{{role_path}}/files/25390.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
