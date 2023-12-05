@@ -133,6 +133,13 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#28437, "View Grant" broken
+    patch:
+      src: "{{role_path}}/files/28437.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#27996, CRM_Utils_Hook fix
     patch:
       src: "{{role_path}}/files/27996.diff"
@@ -143,6 +150,13 @@
   - name: Patch PR#28029, warn if outdated token exists in online event receipt
     patch:
       src: "{{role_path}}/files/28029.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#28519 - better enumerate PCPs.
+    patch:
+      src: "{{role_path}}/files/28519.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
