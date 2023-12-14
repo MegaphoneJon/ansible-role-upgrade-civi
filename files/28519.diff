@@ -34,7 +34,7 @@ index 210cc1faa5db..12197d0d8b61 100644
 -      return $result = $result[$id] ?? NULL;
 +  public static function &pcPage(): array {
 +    if (!isset(self::$pcPage)) {
-+      $result = (array) \Civi\Api4\PCP::get(TRUE)
++      $result = (array) \Civi\Api4\PCP::get(FALSE)
 +        ->addSelect('id', 'title')
 +        ->addWhere('is_active', '=', TRUE)
 +        ->execute()

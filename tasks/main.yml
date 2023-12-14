@@ -39,10 +39,10 @@
   register: civi_ver
   become: no
 
-# - name: Fake an older version of CiviCRM
-#   set_fact:
-#     civi_ver:
-#       content: "5.64.4"
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "5.67.3"
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -133,16 +133,9 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#28437, "View Grant" broken
+  - name: Patch PR#28398, fix "show_detailed_error" with Guzzle
     patch:
-      src: "{{role_path}}/files/28437.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#27996, CRM_Utils_Hook fix
-    patch:
-      src: "{{role_path}}/files/27996.diff"
+      src: "{{role_path}}/files/28398.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -178,13 +171,6 @@
   - name: Don't warn so much on invalid price fields
     patch:
       src: "{{role_path}}/files/28322.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Search builder regex fix
-    patch:
-      src: "{{role_path}}/files/27865.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
