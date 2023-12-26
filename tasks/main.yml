@@ -168,6 +168,13 @@
       strip: 1
     become: yes
 
+  - name: PR#28699. iCal refactor fix.
+    patch:
+      src: "{{role_path}}/files/28699.diff"
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Don't warn so much on invalid price fields
     patch:
       src: "{{role_path}}/files/28322.diff"
