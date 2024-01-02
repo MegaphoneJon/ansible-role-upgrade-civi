@@ -8,6 +8,7 @@
     group: "{{ run_as_user }}"
     recurse: yes
   become: yes
+  tags: upgrade-extensions, upgrade-civi-core
 
 - name: git pull
   git:
@@ -18,7 +19,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: git_repo_url is not none
-  tags: upgrade-extensions
+  tags: upgrade-extensions, upgrade-civi-core
 
 - name: Get current git commit hash
   command: git rev-parse HEAD
@@ -38,11 +39,13 @@
   run_once: true
   register: civi_ver
   become: no
+  tags: upgrade-civi-core
 
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
 #      content: "5.67.3"
+#  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -56,6 +59,7 @@
     - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
     - "civicrm-{{ civi_ver.content }}-wordpress.zip"
   become: no
+  tags: upgrade-civi-core
 
 - name: check installed CiviCRM version
   xml:
@@ -64,6 +68,7 @@
     content: text
   register: version_xml
   changed_when: false
+  tags: upgrade-civi-core
 
 #- name: Set version number
 #  set_fact:
@@ -76,7 +81,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: cms != 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
-
+  tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.tar.gz)
   unarchive:
@@ -85,6 +90,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: (cms == 'Drupal' or cms == 'Backdrop') # and installed_version != civi_ver.content
+  tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.zip)
   unarchive:
@@ -93,6 +99,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: cms == 'WordPress' # and installed_version != civi_ver.content
+  tags: upgrade-civi-core
 
 - name: Update Civi via Composer
   composer:
@@ -102,11 +109,13 @@
   when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
   become: yes
   become_user: "{{ run_as_user }}"
+  tags: upgrade-civi-core
 
 - name: Upgrade the Civi DB
   command: "cv -n upgrade:db --level=cms-full --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
+  tags: upgrade-civi-core
 
 - name: git config - user/email
   blockinfile:
@@ -168,9 +177,9 @@
       strip: 1
     become: yes
 
-  - name: PR#28699. iCal refactor fix.
+  - name: Don't show disabled price field values.
     patch:
-      src: "{{role_path}}/files/28699.diff"
+      src: "{{role_path}}/files/28356.diff"
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -211,6 +220,7 @@
     become: yes
     when: cms == "Drupal"
   when: cms != "Drupal8"
+  tags: upgrade-civi-core
 
 - name: git add Civi + patches
   command: git add -v -A
@@ -221,6 +231,7 @@
   become_user: "{{ run_as_user }}"
   changed_when: add_result.stdout != ''
   failed_when: add_result.stderr != ''
+  tags: upgrade-civi-core
 
 - name: git commit Civi + patches
   command: "git commit -m 'CiviCRM {{ civi_ver.content }} with my patches on top'"
@@ -231,6 +242,7 @@
   become_user: "{{ run_as_user }}"
   changed_when: commit_result.rc == 0
   failed_when: not(commit_result.rc == 0 or 'nothing to commit, working tree clean' in commit_result.stdout_lines)
+  tags: upgrade-civi-core
 
 - name: git push
   command: "git push"
@@ -242,6 +254,7 @@
   when: git_repo_push_url is not search("https://")
   changed_when: push_result.rc == 0 and push_result.stderr != 'Everything up-to-date'
   failed_when: not(push_result.rc == 0)
+  tags: upgrade-civi-core
 
 - name: Get a list of extensions that need updating
   script: helpers/upgradeable-civi.php
