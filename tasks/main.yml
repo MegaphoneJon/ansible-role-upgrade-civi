@@ -128,23 +128,10 @@
   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: Hidden Custom Fields
-    patch:
-      src: "{{role_path}}/files/27235.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Create CMS user later.
     patch:
       src: "{{role_path}}/files/cmsuser.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#28398, fix "show_detailed_error" with Guzzle
-    patch:
-      src: "{{role_path}}/files/28398.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -152,6 +139,7 @@
   - name: Patch PR#28029, warn if outdated token exists in online event receipt
     patch:
       src: "{{role_path}}/files/28029.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -159,6 +147,7 @@
   - name: Patch PR#28519 - better enumerate PCPs.
     patch:
       src: "{{role_path}}/files/28519.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -166,6 +155,7 @@
   - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
       src: "{{role_path}}/files/25823.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -173,20 +163,7 @@
   - name: Don't clear session caches on cache clear.
     patch:
       src: "{{role_path}}/files/20190910-quickform-sessions.patch"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Don't show disabled price field values.
-    patch:
-      src: "{{role_path}}/files/28356.diff"
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Don't warn so much on invalid price fields
-    patch:
-      src: "{{role_path}}/files/28322.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -194,6 +171,7 @@
   - name: Civi multilingual logging patch
     patch:
       src: "{{role_path}}/files/civimultilinguallogging.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -201,6 +179,7 @@
   - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
     patch:
       src: "{{role_path}}/files/14390.diff"
+      backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
@@ -215,6 +194,7 @@
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
       src: "{{role_path}}/files/651.diff"
+      backup: false
       basedir: "{{ civiroot }}/drupal"
       strip: 1
     become: yes
