@@ -34,7 +34,7 @@
 - name: Get the latest CiviCRM version number
   local_action:
     module: uri
-    url: http://latest.civicrm.org/stable.php
+    url: https://latest.civicrm.org/stable.php
     return_content: yes
   run_once: true
   register: civi_ver
