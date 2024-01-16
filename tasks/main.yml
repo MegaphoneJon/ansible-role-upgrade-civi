@@ -144,6 +144,14 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#29016 - other amount bug on quick config price sets.
+    patch:
+      src: "{{role_path}}/files/29016.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#28519 - better enumerate PCPs.
     patch:
       src: "{{role_path}}/files/28519.diff"
