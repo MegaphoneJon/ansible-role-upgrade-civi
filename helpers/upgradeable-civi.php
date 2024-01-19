@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-eval(`cv --level=cms-full php:boot`);
+eval(`cv php:boot`);
 // We force a reload of the classloader to get PSR-4 declarations in extensions D8+ doesn't do this in php:boot).
 \CRM_Core_Config::singleton(TRUE, TRUE);
 

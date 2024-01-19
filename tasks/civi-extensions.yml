@@ -1,6 +1,6 @@
 ---
 - name: Update a single plugin
-  shell: "PATH=$HOME/bin:$PATH;cv ext:download --filter-ready=* --level=cms-full --no-install --force {{ item.key }}"
+  shell: "PATH=$HOME/bin:$PATH;cv ext:download --filter-ready=* --no-install --force {{ item.key }}"
   args:
     chdir: "{{ webroot }}"
   become: yes

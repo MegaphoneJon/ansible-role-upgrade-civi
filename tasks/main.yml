@@ -112,7 +112,7 @@
   tags: upgrade-civi-core
 
 - name: Upgrade the Civi DB
-  command: "cv -n upgrade:db --level=cms-full --cwd {{ webroot }}"
+  command: "cv -n upgrade:db --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
   tags: upgrade-civi-core
@@ -266,7 +266,7 @@
   tags: upgrade-extensions
 
 - name: Check for pending extension database updates
-  command: "cv ev --level=cms-full 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+  command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
   environment:
