@@ -262,7 +262,7 @@
       tags: upgrade-extensions
   with_items:
     - "{{ extensions.stdout }}"
-  when: item is defined and item != "null" and item.key not in extension_redlist and civicrm == 'Yes'
+  when: item is defined and item != "null" and item.key not in extension_redlist and civicrm == 'Yes' and (only_upgrade is not defined or item.key in only_upgrade.split(','))
   tags: upgrade-extensions
 
 - name: Check for pending extension database updates
