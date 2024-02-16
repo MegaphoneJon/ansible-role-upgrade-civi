@@ -136,17 +136,17 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#28029, warn if outdated token exists in online event receipt
+  - name: Patch PR#29212, no duplicate contacts created on test mailing
     patch:
-      src: "{{role_path}}/files/28029.diff"
+      src: "{{role_path}}/files/29212.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Patch PR#29016 - other amount bug on quick config price sets.
+  - name: Patch PR#28029, warn if outdated token exists in online event receipt
     patch:
-      src: "{{role_path}}/files/29016.diff"
+      src: "{{role_path}}/files/28029.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
