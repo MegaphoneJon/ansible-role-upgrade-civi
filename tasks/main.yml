@@ -41,11 +41,11 @@
   become: no
   tags: upgrade-civi-core
 
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "5.67.3"
-#  tags: upgrade-civi-core
+- name: Fake an older version of CiviCRM
+  set_fact:
+    civi_ver:
+      content: "5.70.2"
+  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -152,14 +152,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#28519 - better enumerate PCPs.
-    patch:
-      src: "{{role_path}}/files/28519.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
       src: "{{role_path}}/files/25823.diff"
@@ -191,13 +183,6 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-
-  # - name: Alphabetize report listing (Reporting#25) (for Delta/WISCIENCE; Redmine#2562).
-  #   patch:
-  #     src: "{{role_path}}/files/16259.diff"
-  #     basedir: "{{ civiroot }}"
-  #     strip: 1
-  #   become: yes
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
