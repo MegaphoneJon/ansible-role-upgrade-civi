@@ -41,11 +41,11 @@
   become: no
   tags: upgrade-civi-core
 
-- name: Fake an older version of CiviCRM
-  set_fact:
-    civi_ver:
-      content: "5.70.2"
-  tags: upgrade-civi-core
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "5.70.2"
+#  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -98,37 +98,27 @@
     dest: "{{ civiroot | dirname | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms == 'WordPress' # and installed_version != civi_ver.content
+  when: cms == 'WordPress'
   tags: upgrade-civi-core
 
-- name: Update Civi via Composer
-  composer:
-    command: require
-    arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
-    working_dir: "{{ gitroot }}"
-  when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
-  become: yes
-  become_user: "{{ run_as_user }}"
-  tags: upgrade-civi-core
-
-- name: Upgrade the Civi DB
-  command: "cv -n upgrade:db --cwd {{ webroot }}"
-  become: yes
-  become_user: "{{ run_as_user }}"
-  tags: upgrade-civi-core
-
-- name: git config - user/email
-  blockinfile:
-    path: "{{ gitroot }}/.git/config"
-    block: |
-      [user]
-        email = none@megaphonetech.com
-        name = {{ run_as_user }} on {{ inventory_hostname }}
-  become: yes
-  become_user: "{{ run_as_user }}"
+# - name: git config - user/email
+#   blockinfile:
+#     path: "{{ gitroot }}/.git/config"
+#     block: |
+#       [user]
+#         email = none@megaphonetech.com
+#         name = {{ run_as_user }} on {{ inventory_hostname }}
+#   become: yes
+#   become_user: "{{ run_as_user }}"
 
 - block:
-  - name: Create CMS user later.
+  - name: Upgrade the Civi DB
+    command: "cv -n upgrade:db --cwd {{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    tags: upgrade-civi-core
+
+  - name: Create CMS user later. (For NWU)
     patch:
       src: "{{role_path}}/files/cmsuser.diff"
       backup: false
@@ -136,9 +126,17 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#29212, no duplicate contacts created on test mailing
+  - name: Patch PR#29717, validate numbers correctly
     patch:
-      src: "{{role_path}}/files/29212.diff"
+      src: "{{role_path}}/files/29717.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#29813 - multilingual + logging in separate db
+    patch:
+      src: "{{role_path}}/files/29813.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -178,6 +176,56 @@
     when: cms == "Drupal"
   when: cms != "Drupal8"
   tags: upgrade-civi-core
+
+- block:
+  - name: The patch list
+    set_fact:
+      patch_dict:
+        Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
+        PR#29813 - multilingual + logging in separate db: "https://github.com/civicrm/civicrm-core/pull/29813.diff"
+        PR#29717 - divide by zero contrib form validation: "https://github.com/civicrm/civicrm-core/pull/29717.diff"
+  # - name: Get composer.json as var
+  #   include_vars:
+  #     file: "{{ gitroot }}/composer.json"
+  #     name: composer_json
+  - name: Get composer.json as var
+    slurp:
+      src: "{{ gitroot }}/composer.json"
+    register: composer_base64
+  - name: Convert to YAML
+    set_fact:
+      composer_json:
+        "{{ composer_base64['content'] | b64decode | from_json }}"
+  - debug:
+      msg: "{{ composer_json }}"           
+  - debug:
+      msg: "{{ composer_json | type_debug }}"      
+ 
+  - fail:
+  # - debug:
+  #     msg: "{{ composer_json.extra.patches['civicrm/civicrm-core'] }}"      
+  - name: Combine patch list with existing patches
+    set_fact:
+      composer_json:
+        "{{ composer_json | combine({'extra': {'patches': {'civicrm/civicrm-core': patch_dict}}}, recursive=True, list_merge='append') }}"
+  - name: Write out the new composer.json
+    copy:
+      content: "{{ composer_json | to_nice_json(sort_keys=False) }}" 
+      dest: "{{ gitroot }}/composer.json"
+
+
+  # - name: Update Civi via Composer
+  #   composer:
+  #     command: require
+  #     arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
+  #     working_dir: "{{ gitroot }}"
+  #   when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
+  #   become: yes
+  #   become_user: "{{ run_as_user }}"
+  when: cms == "Drupal8"
+  tags: debugme
+  # tags: upgrade-civi-core
+
 
 - name: git add Civi + patches
   command: git add -v -A
