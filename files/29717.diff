@@ -1,0 +1,75 @@
+diff --git a/CRM/Contribute/Form/Contribution/Main.php b/CRM/Contribute/Form/Contribution/Main.php
+index 8681e186c3db..724030304d80 100644
+--- a/CRM/Contribute/Form/Contribution/Main.php
++++ b/CRM/Contribute/Form/Contribution/Main.php
+@@ -814,13 +814,16 @@ private function buildRecur(): void {
+    *   true if no errors, else array of errors
+    */
+   public static function formRule($fields, $files, $self) {
++    foreach ($fields as $key => $field) {
++      $fields[$key] = $self->getUnLocalizedSubmittedValue($key, $field);
++    }
+     $self->resetOrder($fields);
+     $errors = array_filter(['auto_renew' => $self->getAutoRenewError($fields)]);
+     // @todo - should just be $this->getOrder()->getTotalAmount()
+     $amount = $self->computeAmount($fields, $self->_values);
+ 
+     if ((!empty($fields['selectMembership']) &&
+-        $fields['selectMembership'] != 'no_thanks'
++        $fields['selectMembership'] !== 'no_thanks'
+       ) ||
+       (!empty($fields['priceSetId']) &&
+         $self->_useForMember
+@@ -862,7 +865,7 @@ public static function formRule($fields, $files, $self) {
+             $otherAmount = $priceField->id;
+           }
+           elseif (!empty($fields["price_{$priceField->id}"])) {
+-            $otherAmountVal = CRM_Utils_Rule::cleanMoney($fields["price_{$priceField->id}"]);
++            $otherAmountVal = $fields["price_{$priceField->id}"];
+             $min = $self->_values['min_amount'] ?? NULL;
+             $max = $self->_values['max_amount'] ?? NULL;
+             if ($min && $otherAmountVal < $min) {
+@@ -1131,21 +1134,20 @@ public static function formRule($fields, $files, $self) {
+    */
+   private function computeAmount($params, $formValues) {
+     $amount = 0;
+-    // First clean up the other amount field if present.
+-    if (isset($params['amount_other'])) {
+-      $params['amount_other'] = CRM_Utils_Rule::cleanMoney($params['amount_other']);
+-    }
+ 
+     if (($params['amount'] ?? NULL) == 'amount_other_radio' || !empty($params['amount_other'])) {
++      // @todo - probably unreachable - field would be (e.) price_12 now....
+       $amount = $params['amount_other'];
+     }
+     elseif (!empty($params['pledge_amount'])) {
+       foreach ($params['pledge_amount'] as $paymentId => $dontCare) {
++        // @todo - why would this be a good thing? Is it reachable.
+         $amount += CRM_Core_DAO::getFieldValue('CRM_Pledge_DAO_PledgePayment', $paymentId, 'scheduled_amount');
+       }
+     }
+     else {
+       if (!empty($formValues['amount'])) {
++        // @todo - probably unreachable.
+         $amountID = $params['amount'] ?? NULL;
+ 
+         if ($amountID) {
+diff --git a/CRM/Financial/BAO/Order.php b/CRM/Financial/BAO/Order.php
+index 7602beb27330..c85ed9061c5f 100644
+--- a/CRM/Financial/BAO/Order.php
++++ b/CRM/Financial/BAO/Order.php
+@@ -998,11 +998,12 @@ protected function calculateLineItems(): array {
+       elseif ($this->getPriceFieldMetadata($lineItem['price_field_id'])['name'] === 'other_amount') {
+         // Other amount is a front end user entered form. It is reasonable to think it would be tax inclusive.
+         $lineItem['line_total_inclusive'] = $lineItem['line_total'];
+-        $lineItem['line_total'] = $lineItem['line_total_inclusive'] / (1 + ($lineItem['tax_rate'] / 100));
++        $lineItem['line_total'] = $lineItem['line_total_inclusive'] ? $lineItem['line_total_inclusive'] / (1 + ($lineItem['tax_rate'] / 100)) : 0;
+         $lineItem['tax_amount'] = round($lineItem['line_total_inclusive'] - $lineItem['line_total'], 2);
+         // Make sure they still add up to each other afer the rounding.
+         $lineItem['line_total'] = $lineItem['line_total_inclusive'] - $lineItem['tax_amount'];
+-        $lineItem['unit_price'] = $lineItem['line_total'] / $lineItem['qty'];
++        $lineItem['qty'] = 1;
++        $lineItem['unit_price'] = $lineItem['line_total'];
+ 
+       }
+       elseif ($taxRate) {

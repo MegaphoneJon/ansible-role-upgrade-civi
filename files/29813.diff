@@ -1,0 +1,31 @@
+diff --git a/CRM/Core/I18n/Schema.php b/CRM/Core/I18n/Schema.php
+index 83b535649549..2882b7c3f50f 100644
+--- a/CRM/Core/I18n/Schema.php
++++ b/CRM/Core/I18n/Schema.php
+@@ -464,13 +464,16 @@ private static function createViewQuery($locale, $table, &$dao, $class = 'CRM_Co
+     $columns =& $class::columns();
+     $cols = [];
+     $tableCols = [];
+-    $dao->query("DESCRIBE {$table}", FALSE);
+ 
+     $lookup_table = $table;
+ 
+     if (substr($table, 0, 4) == 'log_') {
+       $lookup_table = substr($table, 4);
++      $dsn = defined('CIVICRM_LOGGING_DSN') ? CRM_Utils_SQL::autoSwitchDSN(CIVICRM_LOGGING_DSN) : CRM_Utils_SQL::autoSwitchDSN(CIVICRM_DSN);
++      $dsn = DB::parseDSN($dsn);
++      $db = $dsn['database'];
+     }
++    $dao->query("DESCRIBE `{$db}`.{$table}", FALSE);
+ 
+     while ($dao->fetch()) {
+       // view non-internationalized columns directly
+@@ -490,7 +493,7 @@ private static function createViewQuery($locale, $table, &$dao, $class = 'CRM_Co
+         $cols[] = "`{$column}_{$locale}` `{$column}`";
+       }
+     }
+-    return "CREATE OR REPLACE VIEW {$table}_{$locale} AS SELECT " . implode(', ', $cols) . " FROM {$table}";
++    return "CREATE OR REPLACE VIEW `{$db}`.{$table}_{$locale} AS SELECT " . implode(', ', $cols) . " FROM `{$db}`.{$table}";
+   }
+ 
+   /**
