@@ -7,6 +7,15 @@
   become_user: "{{ run_as_user }}"
   notify: Apply extension database upgrades
 
+  #- name: Apply CiviDiscount patch
+  # patch:
+  #   src: "{{ role_path }}/files/cividiscount-free-event-fix.diff"
+  #   backup: false
+  #   basedir: "{{ webroot }}/{{ civicrm_custom_path }}/extensions/cividiscount"
+  #   strip: 1
+  # become: yes
+  # when: item.key == "cividiscount"
+
 - name: git add the plugin
   command: git add -v -A
   args:
