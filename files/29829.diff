@@ -1,0 +1,23 @@
+diff --git a/CRM/Event/Form/Registration.php b/CRM/Event/Form/Registration.php
+index 7dcca959422..f83cff879d8 100644
+--- a/CRM/Event/Form/Registration.php
++++ b/CRM/Event/Form/Registration.php
+@@ -1998,6 +1998,9 @@ protected function buildAmount() {
+       }
+     }
+ 
++    //its time to call the hook.
++    CRM_Utils_Hook::buildAmount('event', $form, $feeFields);
++
+     //reset required if participant is skipped.
+     $button = substr($form->controller->getButtonName(), -4);
+     if ($required && $button === 'skip') {
+@@ -2095,6 +2098,8 @@ protected function buildAmount() {
+         $form->addRule('amount', ts('Fee Level is a required field.'), 'required');
+       }
+     }
++
++    $this->setPriceFieldMetaData($feeFields);
+   }
+ 
+   /**

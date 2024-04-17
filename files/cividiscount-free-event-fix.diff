@@ -1,0 +1,13 @@
+diff --git a/cividiscount.php b/cividiscount.php
+index 95d28e2c9e6e34fc1dcb678197ae7cda80699733..b0394052b0831dfb2189a8b1b7cf97a58dc2d950 100644
+--- a/cividiscount.php
++++ b/cividiscount.php
+@@ -124,7 +124,7 @@ function cividiscount_civicrm_buildForm(string $formName, $form): void {
+       }
+     }
+ 
+-    if (empty($discountedPriceOptions)) {
++    if (empty($discountedPriceOptions && $formHelper->getPriceSetID())) {
+       $discountedPriceOptions = _cividiscount_get_discounted_priceset_ids();
+       if (!empty($discountedPriceOptions)) {
+         $availablePriceOptions = $formHelper->getPriceFieldOptionIDs();

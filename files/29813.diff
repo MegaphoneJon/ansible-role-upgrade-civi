@@ -1,5 +1,5 @@
 diff --git a/CRM/Core/I18n/Schema.php b/CRM/Core/I18n/Schema.php
-index 83b535649549..2882b7c3f50f 100644
+index 83b535649549..80bed1d0e134 100644
 --- a/CRM/Core/I18n/Schema.php
 +++ b/CRM/Core/I18n/Schema.php
 @@ -464,13 +464,16 @@ private static function createViewQuery($locale, $table, &$dao, $class = 'CRM_Co
@@ -7,7 +7,8 @@ index 83b535649549..2882b7c3f50f 100644
      $cols = [];
      $tableCols = [];
 -    $dao->query("DESCRIBE {$table}", FALSE);
- 
+-
++    $db = $dao->_database;
      $lookup_table = $table;
  
      if (substr($table, 0, 4) == 'log_') {

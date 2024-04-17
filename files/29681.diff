@@ -1,0 +1,13 @@
+diff --git a/api/v3/utils.php b/api/v3/utils.php
+index a90625e646f6..0a38bbffd8c5 100644
+--- a/api/v3/utils.php
++++ b/api/v3/utils.php
+@@ -1423,7 +1423,7 @@ function _civicrm_api3_custom_data_get(&$returnArray, $checkPermission, $entity,
+   CRM_Core_BAO_CustomGroup::setDefaults($groupTree, $customValues);
+   $fieldInfo = [];
+   foreach ($groupTree as $set) {
+-    $fieldInfo += $set['fields'];
++    $fieldInfo += ($set['fields'] ?? []);
+   }
+   if (!empty($customValues)) {
+     foreach ($customValues as $key => $val) {

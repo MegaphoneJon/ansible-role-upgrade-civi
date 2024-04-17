@@ -70,10 +70,6 @@
   changed_when: false
   tags: upgrade-civi-core
 
-#- name: Set version number
-#  set_fact:
-#    installed_version: "{{ version_xml.matches[0] | regex_replace('[^\\.\\d]+') }}"
-
 - name: Delete the old Civi
   file:
     path: "{{ civiroot }}"
@@ -101,17 +97,15 @@
   when: cms == 'WordPress'
   tags: upgrade-civi-core
 
-# - name: git config - user/email
-#   blockinfile:
-#     path: "{{ gitroot }}/.git/config"
-#     block: |
-#       [user]
-#         email = none@megaphonetech.com
-#         name = {{ run_as_user }} on {{ inventory_hostname }}
-#   become: yes
-#   become_user: "{{ run_as_user }}"
-
 - block:
+  - name: Patch PR#29813 - multilingual + logging in separate db
+    patch:
+      src: "{{role_path}}/files/29813.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
@@ -126,6 +120,14 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#29681 - don't break site when there are no custom fields in a group
+    patch:
+      src: "{{role_path}}/files/29681.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#29717, validate numbers correctly
     patch:
       src: "{{role_path}}/files/29717.diff"
@@ -134,17 +136,17 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#29813 - multilingual + logging in separate db
+  - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
-      src: "{{role_path}}/files/29813.diff"
+      src: "{{role_path}}/files/25823.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Patch PR#25823. Display FormBuilder validation errors.
+  - name: Fix CiviDiscount
     patch:
-      src: "{{role_path}}/files/25823.diff"
+      src: "{{role_path}}/files/29829.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -184,6 +186,8 @@
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
         PR#29813 - multilingual + logging in separate db: "https://github.com/civicrm/civicrm-core/pull/29813.diff"
         PR#29717 - divide by zero contrib form validation: "https://github.com/civicrm/civicrm-core/pull/29717.diff"
+        PR#29829 - CiviDiscount: "https://github.com/civicrm/civicrm-core/pull/29829.diff"
+        PR#29681 - error when custom group has no enabled fields: "https://github.com/civicrm/civicrm-core/pull/29681.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
