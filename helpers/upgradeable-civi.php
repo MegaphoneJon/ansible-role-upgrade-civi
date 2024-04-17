@@ -89,7 +89,7 @@ class myCRM_Admin_Page_Extensions extends CRM_Admin_Page_Extensions {
           if (version_compare($localExtensionRows[$info->key]['version'], $info->version, '<')) {
             // We got one.
             $upgradeableExtensions[] = [
-              'key' => $info->key,
+              'key' => $info->file,
               'name' => $info->name,
               'version' => $info->version,
             ];
