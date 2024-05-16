@@ -120,22 +120,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#29681 - don't break site when there are no custom fields in a group
-    patch:
-      src: "{{role_path}}/files/29681.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#29717, validate numbers correctly
-    patch:
-      src: "{{role_path}}/files/29717.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#25823. Display FormBuilder validation errors.
     patch:
       src: "{{role_path}}/files/25823.diff"
@@ -152,9 +136,17 @@
       strip: 1
     become: yes
 
-  - name: Don't clear session caches on cache clear.
+  - name: Patch PR#30004. SearchKit rewrite fix.  Already merged to 5.73. Not in the D10 patch list.
     patch:
-      src: "{{role_path}}/files/20190910-quickform-sessions.patch"
+      src: "{{role_path}}/files/30004.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#30094. Server-side required field validation, including conditional check
+    patch:
+      src: "{{role_path}}/files/30094.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -185,9 +177,7 @@
       patch_dict:
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
         PR#29813 - multilingual + logging in separate db: "https://github.com/civicrm/civicrm-core/pull/29813.diff"
-        PR#29717 - divide by zero contrib form validation: "https://github.com/civicrm/civicrm-core/pull/29717.diff"
         PR#29829 - CiviDiscount: "https://github.com/civicrm/civicrm-core/pull/29829.diff"
-        PR#29681 - error when custom group has no enabled fields: "https://github.com/civicrm/civicrm-core/pull/29681.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"

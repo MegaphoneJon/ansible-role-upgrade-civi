@@ -1,0 +1,120 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+index e38d45fcdc5e..c5c41fd89855 100644
+--- a/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
++++ b/ext/afform/core/Civi/Api4/Action/Afform/Submit.php
+@@ -112,9 +112,15 @@ public static function validateRequiredFields(AfformValidateEvent $event): void
+       $entityValues = $event->getEntityValues()[$entityName] ?? [];
+       foreach ($entityValues as $values) {
+         foreach ($entity['fields'] as $fieldName => $attributes) {
+-          $error = self::getRequiredFieldError($entity['type'], $fieldName, $attributes, $values['fields'][$fieldName] ?? NULL);
+-          if ($error) {
+-            $event->setError($error);
++          $isVisible = TRUE;
++          if ($attributes['af-if'] ?? FALSE) {
++            $isVisible = self::checkAfformConditional($attributes['af-if'] ?? NULL, $event->getEntityValues());
++          }
++          if ($isVisible) {
++            $error = self::getRequiredFieldError($entity['type'], $fieldName, $attributes, $values['fields'][$fieldName] ?? NULL);
++            if ($error) {
++              $event->setError($error);
++            }
+           }
+         }
+         foreach ($entity['joins'] as $joinEntity => $join) {
+@@ -131,6 +137,96 @@ public static function validateRequiredFields(AfformValidateEvent $event): void
+     }
+   }
+ 
++  /**
++   * PHP interpretation of the "af-if" directive to determine conditional status.
++   * FIXME: This is a naive implementation that will need refactoring when conditionals can evaluate to more than true/false.
++   * @return bool - Is this conditional true or not.
++   */
++  public static function checkAfformConditional(string $conditional, array $allEntityValues) : bool {
++    // decode and remove cruft
++    $conditional = substr($conditional, 1, -1);
++    $conditional = json_decode(html_entity_decode($conditional));
++    foreach ($conditional as $clause) {
++      $clauseResults[] = self::checkAfformConditionalClause($clause, $allEntityValues);
++    }
++    foreach ($clauseResults as $clauseResult) {
++      if (!$clauseResult) {
++        return FALSE;
++      }
++      return TRUE;
++    }
++  }
++
++  private static function checkAfformConditionalClause(array $clause, array $allEntityValues) {
++    if ($clause[0] == 'OR') {
++      // recurse here.
++      $orResult = FALSE;
++      foreach ($clause[1] as $subClause) {
++        $orResult = $orResult || self::checkAfformConditionalClause($subClause, $allEntityValues);
++      }
++      return $orResult;
++    }
++    else {
++      $submittedValue = self::getValueFromEntity($clause[0], $allEntityValues);
++      return self::compareValues($submittedValue, $clause[2], $clause[1]);
++    }
++
++  }
++
++  /**
++   * Given a value like "Individual1[0][fields][Volunteer_Info.Residency_History]", searches a multi-dimensional array for the corresponding value if it exists.
++   */
++  private static function getValueFromEntity(string $getThisValue, array $allEntityValues) {
++    $keys = explode('[', str_replace(']', '', $getThisValue));
++
++    // Initialize the value to the original array
++    $value = $allEntityValues;
++
++    foreach ($keys as $key) {
++      if (isset($value[$key])) {
++        $value = $value[$key];
++      }
++      else {
++        // If any key is not found, return null
++        return NULL;
++      }
++    }
++    return $value;
++  }
++
++  /**
++   * Oh, the things we do to avoid `eval()`.
++   * Pass in two values and a comparison operator. Get the result of comparing the two values.
++   * If we expand the conditional operators in JS, we need to do so here as well.
++   */
++  private static function compareValues(mixed $operand1, mixed $operand2, string $operator) : bool {
++
++    // Compare based on the operator
++    switch ($operator) {
++      case '==':
++        return $operand1 == $operand2;
++
++      case '!=':
++        return $operand1 != $operand2;
++
++      case '>':
++        return $operand1 > $operand2;
++
++      case '<':
++        return $operand1 < $operand2;
++
++      case '>=':
++        return $operand1 >= $operand2;
++
++      case '<=':
++        return $operand1 <= $operand2;
++
++      default:
++        // Handle unknown operator
++        throw new \CRM_Core_Exception("Unknown conditional operator $operator.");
++    }
++  }
++
+   /**
+    * Validate all fields of type "EntityRef" contain values that are allowed by filters
+    *
