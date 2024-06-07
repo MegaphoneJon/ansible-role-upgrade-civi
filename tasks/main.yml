@@ -128,17 +128,17 @@
       strip: 1
     become: yes
 
-  - name: Fix CiviDiscount
+  - name: Print/merge documents on Grants
     patch:
-      src: "{{role_path}}/files/29829.diff"
+      src: "{{role_path}}/files/30321.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Patch PR#30004. SearchKit rewrite fix.  Already merged to 5.73. Not in the D10 patch list.
+  - name: Patch PR#30240. Return contact source from API3 Contact.get
     patch:
-      src: "{{role_path}}/files/30004.diff"
+      src: "{{role_path}}/files/30240.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1

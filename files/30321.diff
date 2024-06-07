@@ -1,0 +1,372 @@
+diff --git a/CRM/Contribute/Task.php b/CRM/Contribute/Task.php
+index cf80e77e21ce..ac5f8f9d2d36 100644
+--- a/CRM/Contribute/Task.php
++++ b/CRM/Contribute/Task.php
+@@ -36,6 +36,12 @@ class CRM_Contribute_Task extends CRM_Core_Task {
+    */
+   public static $objectType = 'contribution';
+ 
++  /**
++   * @var array
++   * We declare this in this child task so other children of CRM_Core_Task don't share a tasks cache with this class.
++   */
++  public static $_tasks = [];
++
+   /**
+    * These tasks are the core set of tasks that the user can perform
+    * on a contact / group of contacts
+diff --git a/CRM/Core/Task.php b/CRM/Core/Task.php
+index 3ef3690a722e..90d0c08c9dfa 100644
+--- a/CRM/Core/Task.php
++++ b/CRM/Core/Task.php
+@@ -153,15 +153,15 @@ public static function corePermissionedTaskTitles($tasks, $permission, $params)
+    *   the set of tasks for a group of participants
+    */
+   public static function getTask($value) {
+-    static::tasks();
++    $tasks = self::$_tasks = static::tasks();
+ 
+-    if (empty(self::$_tasks[$value])) {
++    if (empty($tasks[$value])) {
+       // Children can specify a default task (eg. print), pick another if it is not valid.
+-      $value = key(self::$_tasks);
++      $value = key($tasks);
+     }
+     return [
+-      CRM_Utils_Array::value('class', self::$_tasks[$value]),
+-      CRM_Utils_Array::value('result', self::$_tasks[$value]),
++      $tasks[$value]['class'] ?? '',
++      $tasks[$value]['result'] ?? '',
+     ];
+   }
+ 
+diff --git a/deleted-files-list.json b/deleted-files-list.json
+index bd5d85ed30e8..42e8c3c32f39 100644
+--- a/deleted-files-list.json
++++ b/deleted-files-list.json
+@@ -878,7 +878,6 @@
+     "ext/civicrm_search_ui/managed/SavedSearch_label_format.mgd.php",
+     "ext/civigrant/CRM/Grant/Info.php",
+     "ext/civigrant/CRM/Grant/Page/Tab.php",
+-    "ext/civigrant/Civi/Api4/Service/*",
+     "ext/civigrant/ang/afsearchGrants.aff.html",
+     "ext/civigrant/ang/afsearchGrants.aff.json",
+     "ext/civigrant/ang/afsearchTabGrant.aff.json",
+diff --git a/ext/civigrant/CRM/Grant/Controller/Task.php b/ext/civigrant/CRM/Grant/Controller/Task.php
+new file mode 100644
+index 000000000000..06c89a4db657
+--- /dev/null
++++ b/ext/civigrant/CRM/Grant/Controller/Task.php
+@@ -0,0 +1,52 @@
++<?php
++/*
++ +--------------------------------------------------------------------+
++ | Copyright CiviCRM LLC. All rights reserved.                        |
++ |                                                                    |
++ | This work is published under the GNU AGPLv3 license with some      |
++ | permitted exceptions and without any warranty. For full license    |
++ | and copyright information, see https://civicrm.org/licensing       |
++ +--------------------------------------------------------------------+
++ */
++
++/**
++ * Class CRM_Export_Controller_Standalone
++ */
++class CRM_Grant_Controller_Task extends CRM_Core_Controller_Task {
++
++  /**
++   * Get the name used to construct the class.
++   *
++   * @return string
++   */
++  public function getEntity():string {
++    return 'Grant';
++  }
++
++  /**
++   * Get the available tasks for the entity.
++   *
++   * @return array
++   */
++  public function getAvailableTasks():array {
++    return CRM_Grant_Task::tasks();
++  }
++
++  /**
++   * Override parent to avoid e-notice if the page is 'Search'.
++   *
++   * There are no form values for Search when the standalone processor is used
++   * - move along.
++   *
++   * @param string $pageName
++   *
++   * @return array
++   */
++  public function exportValues($pageName = NULL) {
++    if ($pageName === 'Search') {
++      return [];
++    }
++    return parent::exportValues($pageName);
++  }
++
++}
+diff --git a/ext/civigrant/CRM/Grant/Form/Task.php b/ext/civigrant/CRM/Grant/Form/Task.php
+index 5e5cddb7c456..35f6f5f83520 100644
+--- a/ext/civigrant/CRM/Grant/Form/Task.php
++++ b/ext/civigrant/CRM/Grant/Form/Task.php
+@@ -9,6 +9,8 @@
+  +--------------------------------------------------------------------+
+  */
+ 
++use Civi\Api4\Grant;
++
+ /**
+  * Class for grant form task actions.
+  * FIXME: This needs refactoring to properly inherit from CRM_Core_Form_Task and share more functions.
+@@ -41,14 +43,16 @@ public static function preProcessCommon(&$form) {
+ 
+     $values = $form->getSearchFormValues();
+ 
+-    $form->_task = $values['task'];
+-    $tasks = CRM_Grant_Task::tasks();
+-    if (!array_key_exists($form->_task, $tasks)) {
+-      CRM_Core_Error::statusBounce(ts('You do not have permission to access this page.'));
+-    }
++    $form->_task = $values['task'] ?? NULL;
+ 
+     $ids = $form->getSelectedIDs($values);
+ 
++    // Attempt to get IDs from SearchKit.
++    if (!$ids) {
++      $idString = $form->controller->get('id');
++      $ids = $idString ? explode(',', $idString) : NULL;
++    }
++
+     if (!$ids) {
+       $queryParams = $form->get('queryParams');
+       $sortOrder = NULL;
+@@ -111,4 +115,36 @@ public function addDefaultButtons($title, $nextType = 'next', $backType = 'back'
+     ]);
+   }
+ 
++  /**
++   * Get the rows form the search, keyed to make the token processor happy.
++   *
++   * @throws \CRM_Core_Exception
++   */
++  protected function getRows(): array {
++    if (empty($this->rows)) {
++      // checkPermissions set to false - in case form is bypassing in some way.
++      $grants = Grant::get(FALSE)
++        ->addWhere('id', 'IN', $this->_grantIds)
++        ->setSelect(['id', 'contact_id'])->execute();
++      foreach ($grants as $grant) {
++        $this->rows[] = [
++          'contact_id' => $grant['contact_id'],
++          'grant_id' => $grant['id'],
++          'schema' => [
++            'contactId' => $grant['contact_id'],
++            'grantId' => $grant['id'],
++          ],
++        ];
++      }
++    }
++    return $this->rows;
++  }
++
++  /**
++   * Get the token processor schema required to list any tokens for this task.
++   */
++  public function getTokenSchema(): array {
++    return ['grantId', 'contactId'];
++  }
++
+ }
+diff --git a/ext/civigrant/CRM/Grant/Form/Task/PDF.php b/ext/civigrant/CRM/Grant/Form/Task/PDF.php
+new file mode 100644
+index 000000000000..49e19d8ec954
+--- /dev/null
++++ b/ext/civigrant/CRM/Grant/Form/Task/PDF.php
+@@ -0,0 +1,57 @@
++<?php
++/*
++ +--------------------------------------------------------------------+
++ | Copyright CiviCRM LLC. All rights reserved.                        |
++ |                                                                    |
++ | This work is published under the GNU AGPLv3 license with some      |
++ | permitted exceptions and without any warranty. For full license    |
++ | and copyright information, see https://civicrm.org/licensing       |
++ +--------------------------------------------------------------------+
++ */
++
++/**
++ *
++ * @package CRM
++ * @copyright CiviCRM LLC https://civicrm.org/licensing
++ */
++
++/**
++ * This class provides the functionality to create PDF letter for grants.
++ */
++class CRM_Grant_Form_Task_PDF extends CRM_Grant_Form_Task {
++
++  use CRM_Contact_Form_Task_PDFTrait;
++
++  /**
++   * All the existing templates in the system.
++   *
++   * @var array
++   */
++  public $_templates = NULL;
++
++  public $_single = NULL;
++
++  public $_cid = NULL;
++
++  /**
++   * Build all the data structures needed to build the form.
++   */
++  public function preProcess() {
++    $this->preProcessPDF();
++    parent::preProcess();
++    $this->setContactIDs();
++    // Ajax submit would interfere with pdf file download
++    $this->preventAjaxSubmit();
++  }
++
++  /**
++   * List available tokens for this form.
++   *
++   * @return array
++   */
++  public function listTokens() {
++    $tokens = CRM_Core_SelectValues::contactTokens();
++    return $tokens;
++  }
++
++}
+diff --git a/ext/civigrant/CRM/Grant/Task.php b/ext/civigrant/CRM/Grant/Task.php
+index d8fe85c10de0..18a82bdd2e44 100644
+--- a/ext/civigrant/CRM/Grant/Task.php
++++ b/ext/civigrant/CRM/Grant/Task.php
+@@ -32,6 +32,12 @@ class CRM_Grant_Task extends CRM_Core_Task {
+    */
+   public static $objectType = 'grant';
+ 
++  /**
++   * @var array
++   * We declare this in this child task so other children of CRM_Core_Task don't share a tasks cache with this class.
++   */
++  public static $_tasks = [];
++
+   /**
+    * These tasks are the core set of tasks that the user can perform
+    * on a contact / group of contacts
+@@ -65,6 +71,14 @@ public static function tasks() {
+           'class' => 'CRM_Grant_Form_Task_Update',
+           'result' => FALSE,
+         ],
++        self::PDF_LETTER => [
++          'title' => ts('Print/merge document'),
++          'class' => 'CRM_Grant_Form_Task_PDF',
++          'result' => FALSE,
++          'key' => 'receipt',
++          'url' => 'civicrm/grant/task?reset=1&task_item=receipt',
++          'icon' => 'fa-envelope-o',
++        ],
+       ];
+ 
+       if (!CRM_Core_Permission::check('delete in CiviGrant')) {
+diff --git a/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php b/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php
+new file mode 100644
+index 000000000000..b6de45650629
+--- /dev/null
++++ b/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php
+@@ -0,0 +1,52 @@
++<?php
++/*
++ +--------------------------------------------------------------------+
++ | Copyright CiviCRM LLC. All rights reserved.                        |
++ |                                                                    |
++ | This work is published under the GNU AGPLv3 license with some      |
++ | permitted exceptions and without any warranty. For full license    |
++ | and copyright information, see https://civicrm.org/licensing       |
++ +--------------------------------------------------------------------+
++ */
++
++namespace Civi\Api4\Service;
++
++use CRM_Grant_ExtensionUtil as E;
++use Civi\Core\Event\GenericHookEvent;
++
++/**
++ * @service
++ * @internal
++ */
++class GrantTasksProvider extends \Civi\Core\Service\AutoSubscriber {
++
++  public static function getSubscribedEvents(): array {
++    return [
++      'hook_civicrm_searchKitTasks' => 'addGrantTasks',
++    ];
++  }
++
++  /**
++   * @param \Civi\Core\Event\GenericHookEvent $event
++   */
++  public function addGrantTasks(GenericHookEvent $event): void {
++    // FIXME: CRM_Grant_Task::tasks() should respect `$this->checkPermissions`
++    foreach (\CRM_Grant_Task::tasks() as $id => $task) {
++      if (!empty($task['url'])) {
++        $path = explode('?', $task['url'], 2)[0];
++        $menu = \CRM_Core_Menu::get($path);
++        $key = $menu ? \CRM_Core_Key::get($menu['page_callback'], TRUE) : '';
++
++        $event->tasks['Grant']['grant.' . $id] = [
++          'title' => $task['title'],
++          'icon' => $task['icon'] ?? 'fa-gear',
++          'crmPopup' => [
++            'path' => "'{$task['url']}'",
++            'data' => "{id: ids.join(','), qfKey: '$key'}",
++          ],
++        ];
++      }
++    }
++  }
++
++}
+diff --git a/ext/civigrant/templates/CRM/Grant/Form/Task/PDF.tpl b/ext/civigrant/templates/CRM/Grant/Form/Task/PDF.tpl
+new file mode 100644
+index 000000000000..2a0867644d11
+--- /dev/null
++++ b/ext/civigrant/templates/CRM/Grant/Form/Task/PDF.tpl
+@@ -0,0 +1,14 @@
++{*
++ +--------------------------------------------------------------------+
++ | Copyright CiviCRM LLC. All rights reserved.                        |
++ |                                                                    |
++ | This work is published under the GNU AGPLv3 license with some      |
++ | permitted exceptions and without any warranty. For full license    |
++ | and copyright information, see https://civicrm.org/licensing       |
++ +--------------------------------------------------------------------+
++*}
++<div class="crm-form-block crm-block crm-contact-task-pdf-form-block">
++  <div class="messages status no-popup">{include file="CRM/Grant/Form/Task.tpl"}</div>
++    {include file="CRM/Contact/Form/Task/PDFLetterCommon.tpl"}
++  <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="bottom"}</div>
++</div>
+diff --git a/ext/civigrant/xml/Menu/Grant.xml b/ext/civigrant/xml/Menu/Grant.xml
+index c226716a81e8..09a9b8887a70 100644
+--- a/ext/civigrant/xml/Menu/Grant.xml
++++ b/ext/civigrant/xml/Menu/Grant.xml
+@@ -34,4 +34,10 @@
+      <page_callback>CRM_Grant_Form_GrantView</page_callback>
+      <access_arguments>access CiviGrant</access_arguments>
+   </item>
++  <item>
++    <path>civicrm/grant/task</path>
++    <title>Grant Task</title>
++    <page_callback>CRM_Grant_Controller_Task</page_callback>
++    <access_arguments>access CiviGrant</access_arguments>
++  </item>
+ </menu>
