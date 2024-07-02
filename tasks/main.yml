@@ -128,6 +128,14 @@
       strip: 1
     become: yes
 
+  - name: Memberships with checksum erroneously create renewal activity
+    patch:
+      src: "{{role_path}}/files/30527.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Print/merge documents on Grants
     patch:
       src: "{{role_path}}/files/30321.diff"
@@ -139,6 +147,14 @@
   - name: Patch PR#30240. Return contact source from API3 Contact.get
     patch:
       src: "{{role_path}}/files/30240.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#30391. Old smart groups cause a crash when you try to delete any group.
+    patch:
+      src: "{{role_path}}/files/30094.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
