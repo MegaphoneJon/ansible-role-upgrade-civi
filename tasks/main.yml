@@ -98,14 +98,6 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#29813 - multilingual + logging in separate db
-    patch:
-      src: "{{role_path}}/files/29813.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
@@ -115,6 +107,14 @@
   - name: Create CMS user later. (For NWU)
     patch:
       src: "{{role_path}}/files/cmsuser.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#30678.  POST support for application/json.
+    patch:
+      src: "{{role_path}}/files/30678.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -144,7 +144,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#30240. Return contact source from API3 Contact.get
+  - name: Patch PR#30240. Return contact source from API3 Contact.get (in 5.76)
     patch:
       src: "{{role_path}}/files/30240.diff"
       backup: false
@@ -152,7 +152,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#30391. Old smart groups cause a crash when you try to delete any group.
+  - name: Patch PR#30391. Old smart groups cause a crash when you try to delete any group. (in 5.76)
     patch:
       src: "{{role_path}}/files/30094.diff"
       backup: false
@@ -160,7 +160,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#30094. Server-side required field validation, including conditional check
+  - name: Patch PR#30094. Server-side required field validation, including conditional check (5.76 or 5.77)
     patch:
       src: "{{role_path}}/files/30094.diff"
       backup: false
@@ -192,8 +192,6 @@
     set_fact:
       patch_dict:
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
-        PR#29813 - multilingual + logging in separate db: "https://github.com/civicrm/civicrm-core/pull/29813.diff"
-        PR#29829 - CiviDiscount: "https://github.com/civicrm/civicrm-core/pull/29829.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
