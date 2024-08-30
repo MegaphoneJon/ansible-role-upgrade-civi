@@ -128,6 +128,14 @@
       strip: 1
     become: yes
 
+  - name: Fix ReCAPTCHA v2
+    patch:
+      src: "{{role_path}}/files/31011.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Print/merge documents on Grants
     patch:
       src: "{{role_path}}/files/30321.diff"
