@@ -44,7 +44,7 @@
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
-#      content: "5.70.2"
+#      content: "5.76.3"
 #  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
@@ -192,6 +192,7 @@
     set_fact:
       patch_dict:
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
+        Fix ReCAPTCHA v2: "https://github.com/civicrm/civicrm-core/pull/31020.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
