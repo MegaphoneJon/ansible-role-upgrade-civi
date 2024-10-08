@@ -27,7 +27,7 @@
   failed_when: add_result.stderr != ''
 
 - name: git commit Civi + patches
-  command: "git commit -m 'Civi extension upgrade: {{ item.key }} {{ item.version }}'"
+  command: "git commit -m 'Civi extension upgrade: {{ item.key }} {{ item.upgradeVersion }}'"
   args:
     chdir: "{{ webroot }}"
   register: commit_result

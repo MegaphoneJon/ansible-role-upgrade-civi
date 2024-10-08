@@ -128,33 +128,9 @@
       strip: 1
     become: yes
 
-  - name: Fix ReCAPTCHA v2
-    patch:
-      src: "{{role_path}}/files/31011.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Print/merge documents on Grants
     patch:
       src: "{{role_path}}/files/30321.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#30094. Server-side required field validation, including conditional check (5.76 or 5.77)
-    patch:
-      src: "{{role_path}}/files/30094.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: PR#30717. Scheduled reminders changed from relative to absolute dates.
-    patch:
-      src: "{{role_path}}/files/30717.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -251,7 +227,7 @@
   tags: upgrade-civi-core
 
 - name: Get a list of extensions that need updating
-  script: helpers/upgradeable-civi.php
+  command: "cv ext:list --upgrade=available --out=json --columns=key,upgradeVersion"
   args:
     chdir: "{{ webroot }}"
   register: extensions
