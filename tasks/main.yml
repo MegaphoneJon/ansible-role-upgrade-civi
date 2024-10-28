@@ -136,14 +136,6 @@
       strip: 1
     become: yes
 
-  - name: PR#30830. Grant dashboard has data loss bug.
-    patch:
-      src: "{{role_path}}/files/30830.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
     patch:
       src: "{{role_path}}/files/14390.diff"
@@ -168,7 +160,6 @@
     set_fact:
       patch_dict:
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
-        Fix ReCAPTCHA v2: "https://github.com/civicrm/civicrm-core/pull/31020.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
