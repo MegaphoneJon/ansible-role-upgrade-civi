@@ -227,7 +227,7 @@
   tags: upgrade-civi-core
 
 - name: Get a list of extensions that need updating
-  command: "cv ext:list --upgrade=available --out=json --columns=key,upgradeVersion"
+  command: "cv ext:list --upgrade=available --filter-status=* --filter-ready=* --out=json --columns=key,upgradeVersion"
   args:
     chdir: "{{ webroot }}"
   register: extensions
