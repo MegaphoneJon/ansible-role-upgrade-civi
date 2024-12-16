@@ -112,6 +112,14 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#31401. Multilingual insert trigger (in 5.80? 5.81?)
+    patch:
+      src: "{{role_path}}/files/31410.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -143,6 +151,15 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
+
+  - name: Patch VERP for Delta
+    patch:
+      src: "{{role_path}}/files/verp.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+    when: canonical_primary_url == 'https://reg.delta.wisc.edu'
 
   - name: Allow token in title/alt text for contact image fields (Leonardo, Redmine#6168)
     patch:
