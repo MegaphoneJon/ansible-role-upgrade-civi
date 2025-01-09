@@ -41,11 +41,11 @@
   become: no
   tags: upgrade-civi-core
 
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "5.76.3"
-#  tags: upgrade-civi-core
+- name: Fake an older version of CiviCRM
+  set_fact:
+    civi_ver:
+      content: "5.80.2"
+  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -112,7 +112,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#31401. Multilingual insert trigger (in 5.80? 5.81?)
+  - name: Patch PR#31410. Multilingual insert trigger (in 5.81)
     patch:
       src: "{{role_path}}/files/31410.diff"
       backup: false
