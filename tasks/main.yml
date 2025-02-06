@@ -41,11 +41,11 @@
   become: no
   tags: upgrade-civi-core
 
-- name: Fake an older version of CiviCRM
-  set_fact:
-    civi_ver:
-      content: "5.80.2"
-  tags: upgrade-civi-core
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "5.80.3"
+#  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -103,14 +103,6 @@
     become: yes
     become_user: "{{ run_as_user }}"
     tags: upgrade-civi-core
-
-  - name: Create CMS user later. (For NWU)
-    patch:
-      src: "{{role_path}}/files/cmsuser.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
 
   - name: Patch PR#31410. Multilingual insert trigger (in 5.81)
     patch:
