@@ -1,5 +1,5 @@
 - name: Apply extension database upgrades
-  command: "cv ext:updb"
+  command: "cv updb"
   args:
     chdir: "{{ webroot }}"
   become: yes
