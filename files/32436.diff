@@ -1,0 +1,268 @@
+diff --git a/Civi/Api4/Generic/Traits/CustomValueActionTrait.php b/Civi/Api4/Generic/Traits/CustomValueActionTrait.php
+index 14159ad18cd0..5ed5a1e4d9f4 100644
+--- a/Civi/Api4/Generic/Traits/CustomValueActionTrait.php
++++ b/Civi/Api4/Generic/Traits/CustomValueActionTrait.php
+@@ -85,8 +85,8 @@ protected function writeObjects($items) {
+         $tableName = CoreUtil::getTableName($this->getEntityName());
+         $items[$idx]['id'] = (int) \CRM_Core_DAO::singleValueQuery('SELECT MAX(id) FROM ' . $tableName);
+       }
+-      FormattingUtil::formatOutputValues($items[$idx], $fields, 'create');
+     }
++    FormattingUtil::formatOutputValues($items, $fields, 'create');
+     return $items;
+   }
+ 
+diff --git a/Civi/Api4/Generic/Traits/DAOActionTrait.php b/Civi/Api4/Generic/Traits/DAOActionTrait.php
+index 29cda9928026..011b5668efc5 100644
+--- a/Civi/Api4/Generic/Traits/DAOActionTrait.php
++++ b/Civi/Api4/Generic/Traits/DAOActionTrait.php
+@@ -148,9 +148,7 @@ protected function writeObjects($items) {
+     }
+ 
+     \CRM_Utils_API_HTMLInputCoder::singleton()->decodeRows($result);
+-    foreach ($result as &$row) {
+-      FormattingUtil::formatOutputValues($row, $this->entityFields());
+-    }
++    FormattingUtil::formatOutputValues($result, $this->entityFields());
+     return $result;
+   }
+ 
+diff --git a/Civi/Api4/Generic/Traits/PseudoconstantOutputTrait.php b/Civi/Api4/Generic/Traits/PseudoconstantOutputTrait.php
+index eb721ed19556..901a7353ebaf 100644
+--- a/Civi/Api4/Generic/Traits/PseudoconstantOutputTrait.php
++++ b/Civi/Api4/Generic/Traits/PseudoconstantOutputTrait.php
+@@ -42,9 +42,9 @@ protected function formatRawValues(&$records) {
+           }
+         }
+       }
+-      // Swap raw values with pseudoconstants
+-      FormattingUtil::formatOutputValues($values, $fields, $this->getActionName());
+     }
++    // Swap raw values with pseudoconstants
++    FormattingUtil::formatOutputValues($records, $fields, $this->getActionName());
+   }
+ 
+ }
+diff --git a/Civi/Api4/Query/Api4EntitySetQuery.php b/Civi/Api4/Query/Api4EntitySetQuery.php
+index 3be5f7c2ce9b..90acf758735e 100644
+--- a/Civi/Api4/Query/Api4EntitySetQuery.php
++++ b/Civi/Api4/Query/Api4EntitySetQuery.php
+@@ -62,21 +62,24 @@ public function __construct($api) {
+    */
+   public function run(): array {
+     $results = $this->getResults();
++    // Aggregated queries will have to make due with limited field info
++    if (!isset($results[0]['_api_set_index'])) {
++      FormattingUtil::formatOutputValues($results, $this->apiFieldSpec, 'get', $this->selectAliases);
++      return $results;
++    }
++    // Categorize rows by set, so each set can be formatted as a batch
++    $setResults = [];
+     foreach ($results as &$result) {
+       // Format fields based on which set this row belongs to
+       // This index is only available for non-aggregated queries
+-      $index = $result['_api_set_index'] ?? NULL;
++      $index = $result['_api_set_index'];
+       unset($result['_api_set_index']);
+-      if (isset($index)) {
+-        $fieldSpec = $this->getSubquery($index)->apiFieldSpec;
+-        $selectAliases = $this->getSubquery($index)->selectAliases;
+-      }
+-      // Aggregated queries will have to make due with limited field info
+-      else {
+-        $fieldSpec = $this->apiFieldSpec;
+-        $selectAliases = $this->selectAliases;
+-      }
+-      FormattingUtil::formatOutputValues($result, $fieldSpec, 'get', $selectAliases);
++      $setResults[$index][] = &$result;
++    }
++    foreach ($setResults as $index => &$setResult) {
++      $fieldSpec = $this->getSubquery($index)->apiFieldSpec;
++      $selectAliases = $this->getSubquery($index)->selectAliases;
++      FormattingUtil::formatOutputValues($setResult, $fieldSpec, 'get', $selectAliases);
+     }
+     return $results;
+   }
+diff --git a/Civi/Api4/Query/Api4SelectQuery.php b/Civi/Api4/Query/Api4SelectQuery.php
+index 0511932ad054..cf0b6d57c506 100644
+--- a/Civi/Api4/Query/Api4SelectQuery.php
++++ b/Civi/Api4/Query/Api4SelectQuery.php
+@@ -104,9 +104,7 @@ public function __construct($api) {
+    */
+   public function run(): array {
+     $results = $this->getResults();
+-    foreach ($results as &$result) {
+-      FormattingUtil::formatOutputValues($result, $this->apiFieldSpec, 'get', $this->selectAliases);
+-    }
++    FormattingUtil::formatOutputValues($results, $this->apiFieldSpec, 'get', $this->selectAliases);
+     return $results;
+   }
+ 
+diff --git a/Civi/Api4/Utils/FormattingUtil.php b/Civi/Api4/Utils/FormattingUtil.php
+index b5ed129196e6..46004a7c345a 100644
+--- a/Civi/Api4/Utils/FormattingUtil.php
++++ b/Civi/Api4/Utils/FormattingUtil.php
+@@ -216,71 +216,76 @@ public static function formatDateValue($format, $value, &$operator = NULL, $inde
+   }
+ 
+   /**
+-   * Unserialize raw DAO values and convert to correct type
++   * Unserialize raw field values and convert to correct type
+    *
+-   * @param array $result
++   * @param array $records
+    * @param array $fields
+    * @param string $action
+    * @param array $selectAliases
+    * @throws \CRM_Core_Exception
+    */
+-  public static function formatOutputValues(&$result, $fields, $action = 'get', $selectAliases = []) {
+-    $contactTypePaths = [];
+-    // Save an array of unprocessed values which are useful when replacing pseudocontants
+-    $rawValues = $result;
+-    foreach ($rawValues as $key => $value) {
+-      // Pseudoconstants haven't been replaced yet so strip suffixes from raw values
+-      if (strpos($key, ':') > strrpos($key, ')')) {
+-        [$fieldName] = explode(':', $key);
+-        $rawValues[$fieldName] = $value;
+-        unset($rawValues[$key]);
+-      }
+-    }
+-    foreach ($result as $key => $value) {
+-      // Skip null values or values that have already been unset by `formatOutputValue` functions
+-      if (!isset($result[$key])) {
+-        continue;
+-      }
+-      $fieldExpr = SqlExpression::convert($selectAliases[$key] ?? $key);
+-      $fieldName = \CRM_Utils_Array::first($fieldExpr->getFields());
+-      $baseName = $fieldName ? \CRM_Utils_Array::first(explode(':', $fieldName)) : NULL;
+-      $field = $fields[$fieldName] ?? $fields[$baseName] ?? NULL;
+-      $dataType = $field['data_type'] ?? ($fieldName == 'id' ? 'Integer' : NULL);
+-      // Allow Sql Functions to alter the value and/or $dataType
+-      if (method_exists($fieldExpr, 'formatOutputValue') && is_string($value)) {
+-        $fieldExpr->formatOutputValue($dataType, $result, $key);
+-        $value = $result[$key];
+-      }
+-      if (!empty($field['output_formatters'])) {
+-        self::applyFormatters($result, $fieldExpr, $field, $value);
+-        $dataType = NULL;
+-      }
+-      // Evaluate pseudoconstant suffixes
+-      $suffix = self::getSuffix($fieldName);
+-      $fieldOptions = NULL;
+-      if (isset($value) && $suffix) {
+-        $fieldOptions = self::getPseudoconstantList($field, $fieldName, $rawValues, $action);
+-        $dataType = NULL;
+-      }
+-      // Store contact_type value before replacing pseudoconstant (e.g. transforming it to contact_type:label)
+-      // Used by self::contactFieldsToRemove below
+-      if ($value && isset($field['entity']) && $field['entity'] === 'Contact' && $field['name'] === 'contact_type') {
+-        $prefix = strrpos($fieldName, '.');
+-        $contactTypePaths[$prefix ? substr($fieldName, 0, $prefix + 1) : ''] = $value;
++  public static function formatOutputValues(&$records, $fields, $action = 'get', $selectAliases = []) {
++    $fieldExprs = [];
++    foreach ($records as &$result) {
++      $contactTypePaths = [];
++      // Save an array of unprocessed values which are useful when replacing pseudocontants
++      $rawValues = $result;
++      foreach ($rawValues as $key => $value) {
++        // Pseudoconstants haven't been replaced yet so strip suffixes from raw values
++        if (strpos($key, ':') > strrpos($key, ')')) {
++          [$fieldName] = explode(':', $key);
++          $rawValues[$fieldName] = $value;
++          unset($rawValues[$key]);
++        }
+       }
+-      if ($fieldExpr->supportsExpansion) {
+-        if (!empty($field['serialize']) && is_string($value)) {
+-          $value = \CRM_Core_DAO::unSerializeField($value, $field['serialize']);
++      foreach ($result as $key => $value) {
++        // Skip null values or values that have already been unset by `formatOutputValue` functions
++        if (!isset($result[$key])) {
++          continue;
+         }
+-        if (isset($fieldOptions)) {
+-          $value = self::replacePseudoconstant($fieldOptions, $value);
++        // Use ??= to only convert each column once
++        $fieldExprs[$key] ??= SqlExpression::convert($selectAliases[$key] ?? $key);
++        $fieldExpr = $fieldExprs[$key];
++        $fieldName = \CRM_Utils_Array::first($fieldExpr->getFields());
++        $baseName = $fieldName ? \CRM_Utils_Array::first(explode(':', $fieldName)) : NULL;
++        $field = $fields[$fieldName] ?? $fields[$baseName] ?? NULL;
++        $dataType = $field['data_type'] ?? ($fieldName == 'id' ? 'Integer' : NULL);
++        // Allow Sql Functions to alter the value and/or $dataType
++        if (method_exists($fieldExpr, 'formatOutputValue') && is_string($value)) {
++          $fieldExpr->formatOutputValue($dataType, $result, $key);
++          $value = $result[$key];
+         }
++        if (!empty($field['output_formatters'])) {
++          self::applyFormatters($result, $fieldExpr, $field, $value);
++          $dataType = NULL;
++        }
++        // Evaluate pseudoconstant suffixes
++        $suffix = self::getSuffix($fieldName);
++        $fieldOptions = NULL;
++        if (isset($value) && $suffix) {
++          $fieldOptions = self::getPseudoconstantList($field, $fieldName, $rawValues, $action);
++          $dataType = NULL;
++        }
++        // Store contact_type value before replacing pseudoconstant (e.g. transforming it to contact_type:label)
++        // Used by self::contactFieldsToRemove below
++        if ($value && isset($field['entity']) && $field['entity'] === 'Contact' && $field['name'] === 'contact_type') {
++          $prefix = strrpos($fieldName, '.');
++          $contactTypePaths[$prefix ? substr($fieldName, 0, $prefix + 1) : ''] = $value;
++        }
++        if ($fieldExpr->supportsExpansion) {
++          if (!empty($field['serialize']) && is_string($value)) {
++            $value = \CRM_Core_DAO::unSerializeField($value, $field['serialize']);
++          }
++          if (isset($fieldOptions)) {
++            $value = self::replacePseudoconstant($fieldOptions, $value);
++          }
++        }
++        $result[$key] = self::convertDataType($value, $dataType);
++      }
++      // Remove inapplicable contact fields
++      foreach ($contactTypePaths as $prefix => $contactType) {
++        \CRM_Utils_Array::remove($result, self::contactFieldsToRemove($contactType, $prefix));
+       }
+-      $result[$key] = self::convertDataType($value, $dataType);
+-    }
+-    // Remove inapplicable contact fields
+-    foreach ($contactTypePaths as $prefix => $contactType) {
+-      \CRM_Utils_Array::remove($result, self::contactFieldsToRemove($contactType, $prefix));
+     }
+   }
+ 
+diff --git a/ext/civi_contribute/Civi/Api4/Action/Payment/Create.php b/ext/civi_contribute/Civi/Api4/Action/Payment/Create.php
+index 63748f3e316d..414337e65dec 100644
+--- a/ext/civi_contribute/Civi/Api4/Action/Payment/Create.php
++++ b/ext/civi_contribute/Civi/Api4/Action/Payment/Create.php
+@@ -169,9 +169,7 @@ public function _run(\Civi\Api4\Generic\Result $result) {
+     $savedRecords = [];
+     $savedRecords[] = $this->baoToArray($trxn, $this->values);
+     \CRM_Utils_API_HTMLInputCoder::singleton()->decodeRows($savedRecords);
+-    foreach ($savedRecords as &$row) {
+-      FormattingUtil::formatOutputValues($row, $this->entityFields());
+-    }
++    FormattingUtil::formatOutputValues($savedRecords, $this->entityFields());
+     $result->exchangeArray($savedRecords);
+   }
+ 
+diff --git a/ext/search_kit/Civi/Api4/Action/SearchDisplay/GetDefault.php b/ext/search_kit/Civi/Api4/Action/SearchDisplay/GetDefault.php
+index 39d3fb738bcb..cb75bce81bd3 100644
+--- a/ext/search_kit/Civi/Api4/Action/SearchDisplay/GetDefault.php
++++ b/ext/search_kit/Civi/Api4/Action/SearchDisplay/GetDefault.php
+@@ -95,9 +95,10 @@ public function _run(\Civi\Api4\Generic\Result $result) {
+         $display[$fieldExpr] = $display[$fieldName];
+       }
+     }
++    $displays = [$display];
+     // Replace pseudoconstants e.g. type:icon
+-    FormattingUtil::formatOutputValues($display, $fields);
+-    $result->exchangeArray($this->selectArray([$display]));
++    FormattingUtil::formatOutputValues($displays, $fields);
++    $result->exchangeArray($this->selectArray($displays));
+   }
+ 
+   /**

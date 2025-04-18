@@ -1,0 +1,34 @@
+diff --git a/CRM/Event/Form/ManageEvent/Registration.php b/CRM/Event/Form/ManageEvent/Registration.php
+index 6b0ec5791153..0bdef473c106 100644
+--- a/CRM/Event/Form/ManageEvent/Registration.php
++++ b/CRM/Event/Form/ManageEvent/Registration.php
+@@ -172,6 +172,13 @@ public function setDefaultValues() {
+     return $defaults;
+   }
+ 
++  /**
++   * Prevent tokens within URLs on comfirm_email_text from being munged.
++   */
++  protected function getFieldsToExcludeFromPurification(): array {
++    return ['confirm_email_text'];
++  }
++
+   /**
+    * Fix what blocks to show/hide based on the default values set
+    *
+diff --git a/CRM/Event/Form/Participant.php b/CRM/Event/Form/Participant.php
+index b80f6de2e2b4..c0d63932abf9 100644
+--- a/CRM/Event/Form/Participant.php
++++ b/CRM/Event/Form/Participant.php
+@@ -2091,4 +2091,11 @@ private function buildAmount(): void {
+     $this->assign('priceSet', $this->_priceSet);
+   }
+ 
++  /**
++   * Prevent tokens within URLs on comfirm_email_text from being munged.
++   */
++  protected function getFieldsToExcludeFromPurification(): array {
++    return ['receipt_text'];
++  }
++
+ }

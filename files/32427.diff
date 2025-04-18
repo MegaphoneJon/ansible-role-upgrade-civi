@@ -1,0 +1,43 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/CustomGroup/GetAfforms.php b/ext/afform/core/Civi/Api4/Action/CustomGroup/GetAfforms.php
+index 715fbbfa5061..75afc587a0bf 100644
+--- a/ext/afform/core/Civi/Api4/Action/CustomGroup/GetAfforms.php
++++ b/ext/afform/core/Civi/Api4/Action/CustomGroup/GetAfforms.php
+@@ -56,12 +56,8 @@ protected function doTask($item) {
+     $forms = [];
+ 
+     // get field names once, for use across all the generate actions
+-    $item['field_names'] = \Civi\Api4\CustomField::get(FALSE)
+-      ->addSelect('name')
+-      ->addWhere('custom_group_id', '=', $item['id'])
+-      ->addWhere('is_active', '=', TRUE)
+-      ->execute()
+-      ->column('name');
++    $fields = \CRM_Core_BAO_CustomGroup::getGroup(['id' => $item['id']])['fields'];
++    $item['field_names'] = array_column($fields, 'name');
+ 
+     // Custom group has no enabled fields; nothing to generate.
+     if (!$item['field_names']) {
+diff --git a/ext/civicrm_admin_ui/Civi/Api4/Action/CustomGroup/GetSearchKit.php b/ext/civicrm_admin_ui/Civi/Api4/Action/CustomGroup/GetSearchKit.php
+index 16c319833fa2..d792512c9511 100644
+--- a/ext/civicrm_admin_ui/Civi/Api4/Action/CustomGroup/GetSearchKit.php
++++ b/ext/civicrm_admin_ui/Civi/Api4/Action/CustomGroup/GetSearchKit.php
+@@ -32,15 +32,10 @@ protected function doTask($item) {
+     // SavedSearch and SearchDisplays
+     $item['search_name'] = $item['entity_name'] . '_Search';
+ 
+-    // get active fields for this group to include as columns
+-    $item['fields'] = (array) \Civi\Api4\CustomField::get(FALSE)
+-      ->addSelect('name', 'label', 'option_group_id')
+-      ->addWhere('custom_group_id', '=', $item['id'])
+-      ->addWhere('is_active', '=', TRUE)
+-      // respect "Display in table" config on each field
+-      // (Q: should we respect this for other displays?)
+-      ->addWhere('in_selector', '=', TRUE)
+-      ->execute();
++    // get Active + Display In Table fields for this group to include as columns
++    // note: `in_selector` is the field key for "display in table"
++    $activeFields = \CRM_Core_BAO_CustomGroup::getGroup(['id' => $item['id']])['fields'];
++    $item['fields'] = array_filter($activeFields, fn ($field) => $field['in_selector']);
+ 
+     $managed = [];
+ 
