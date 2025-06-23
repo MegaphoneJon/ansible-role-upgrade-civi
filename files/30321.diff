@@ -1,5 +1,5 @@
 diff --git a/CRM/Core/Task.php b/CRM/Core/Task.php
-index 3ef3690a722e..90d0c08c9dfa 100644
+index 4882653c3c17..f6067790c1f0 100644
 --- a/CRM/Core/Task.php
 +++ b/CRM/Core/Task.php
 @@ -153,15 +153,15 @@ public static function corePermissionedTaskTitles($tasks, $permission, $params)
@@ -16,18 +16,18 @@ index 3ef3690a722e..90d0c08c9dfa 100644
 +      $value = key($tasks);
      }
      return [
--      CRM_Utils_Array::value('class', self::$_tasks[$value]),
--      CRM_Utils_Array::value('result', self::$_tasks[$value]),
+-      self::$_tasks[$value]['class'] ?? NULL,
+-      self::$_tasks[$value]['result'] ?? NULL,
 +      $tasks[$value]['class'] ?? '',
 +      $tasks[$value]['result'] ?? '',
      ];
    }
  
 diff --git a/deleted-files-list.json b/deleted-files-list.json
-index bd5d85ed30e8..42e8c3c32f39 100644
+index 390020b7fccb..b4ea91e62a1a 100644
 --- a/deleted-files-list.json
 +++ b/deleted-files-list.json
-@@ -878,7 +878,6 @@
+@@ -943,7 +943,6 @@
      "ext/civicrm_search_ui/managed/SavedSearch_label_format.mgd.php",
      "ext/civigrant/CRM/Grant/Info.php",
      "ext/civigrant/CRM/Grant/Page/Tab.php",

@@ -16,15 +16,6 @@
   # become: yes
   # when: item.key == "cividiscount"
 
-- name: Apply CiviDiscount patch
-  patch:
-    src: "{{ role_path }}/files/civirules-emailapifix.diff"
-    backup: false
-    basedir: "{{ webroot }}/{{ civicrm_custom_path }}/extensions/civirules"
-    strip: 1
-  become: yes
-  when: item.key == "civirules"
-
 - name: git add the plugin
   command: git add -v -A
   args:

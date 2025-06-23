@@ -105,9 +105,9 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#31723 - broken curly braces in event confirmation mail
+  - name: Patch PR#32674 - broken curly braces in event confirmation mail
     patch:
-      src: "{{role_path}}/files/31723.diff"
+      src: "{{role_path}}/files/32674.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
@@ -144,22 +144,6 @@
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
-  
-  - name: Patch PR#32427. Api4 performance boost 2. In Civi 6.1
-    patch:
-      src: "{{role_path}}/files/32427.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#32436.  Api4 performance boost 1. in Civi 6.2.
-    patch:
-      src: "{{role_path}}/files/32436.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
 
   - name: Patch VERP for Delta
     patch:
@@ -186,8 +170,6 @@
     set_fact:
       patch_dict:
         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
-        performance patch 2 in Civi 6.1: "https://github.com/civicrm/civicrm-core/pull/32436.diff"
-        performance patch 1 in Civi 6.1: "https://github.com/civicrm/civicrm-core/pull/32436.diff"
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
