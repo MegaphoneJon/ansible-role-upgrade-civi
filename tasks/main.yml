@@ -241,12 +241,17 @@
   become: yes
   become_user: "{{ run_as_user }}"
   when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
-  tags: upgrade-extensions
+  tags: upgrade-extensions, upgrade-extensions-list
 
 - name: Initialize forced_ext_upgrades
   set_fact:
     forced_ext_upgrades: []
   tags: upgrade-extensions
+
+- debug:
+    var: extensions.stdout
+  when: extensions.stdout is defined and extensions.stdout != "null"
+  tags: upgrade-extensions-list
 
 # # Force an extension to be "upgraded" with JSON, e.g.:
 # # [{"key":"org.civicoop.civirules","upgradeVersion":"3.17.1"}]
