@@ -165,37 +165,37 @@
   when: cms != "Drupal8"
   tags: upgrade-civi-core, upgrade-civi-patches
 
-- block:
-  - name: The patch list
-    set_fact:
-      patch_dict:
-        Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
+# - block:
+#   - name: The patch list
+#     set_fact:
+#       patch_dict:
+#         Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
 
-  - name: Add patches to Composer
-    shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
-    register: updated_composer
+#   - name: Add patches to Composer
+#     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
+#     register: updated_composer
 
-  # Gotta use a template and not copy because of https://github.com/ansible/ansible/issues/34595#issuecomment-356091161.
-  - name: Write out the new composer.json
-    template:
-      src: composer.json.j2
-      dest: "{{ gitroot }}/composer.json"
+#   # Gotta use a template and not copy because of https://github.com/ansible/ansible/issues/34595#issuecomment-356091161.
+#   - name: Write out the new composer.json
+#     template:
+#       src: composer.json.j2
+#       dest: "{{ gitroot }}/composer.json"
 
-  - name: Update Civi via Composer
-    composer:
-      command: require
-      arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
-      working_dir: "{{ gitroot }}"
-    when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
-    become: yes
-    become_user: "{{ run_as_user }}"
+#   - name: Update Civi via Composer
+#     composer:
+#       command: require
+#       arguments: "--with-all-dependencies civicrm/civicrm-core:'{{ civi_ver.content }}' civicrm/civicrm-packages:'{{ civi_ver.content }}' civicrm/civicrm-drupal-8:'{{ civi_ver.content }}'"
+#       working_dir: "{{ gitroot }}"
+#     when: cms == 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
+#     become: yes
+#     become_user: "{{ run_as_user }}"
 
-  - name: Upgrade the Civi DB
-    command: "cv -n upgrade:db --cwd {{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-  when: cms == "Drupal8"
-  tags: upgrade-civi-core, upgrade-civi-patches
+#   - name: Upgrade the Civi DB
+#     command: "cv -n upgrade:db --cwd {{ webroot }}"
+#     become: yes
+#     become_user: "{{ run_as_user }}"
+#   when: cms == "Drupal8"
+#   tags: upgrade-civi-core, upgrade-civi-patches
 
 
 - name: git add Civi + patches
