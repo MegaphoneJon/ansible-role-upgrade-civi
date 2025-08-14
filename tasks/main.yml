@@ -105,14 +105,6 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#32674 - broken curly braces in event confirmation mail
-    patch:
-      src: "{{role_path}}/files/32674.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -121,7 +113,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#25823. Display FormBuilder validation errors.
+  - name: Patch PR#25823. Display FormBuilder validation errors. (in either 6.6 or 6.7)
     patch:
       src: "{{role_path}}/files/25823.diff"
       backup: false
@@ -137,7 +129,7 @@
       strip: 1
     become: yes
 
-  - name: Patch core#1006, PR#14390.  don't overwrite existing data on profile submission with a blank Select2.  Trivial to fix original PR?
+  - name: Patch core#1006, PR#14390.  In 6.6.
     patch:
       src: "{{role_path}}/files/14390.diff"
       backup: false
