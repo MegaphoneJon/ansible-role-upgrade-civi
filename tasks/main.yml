@@ -105,6 +105,14 @@
   tags: upgrade-civi-core
 
 - block:
+  - name: Patch PR#34165.  Fix regression in Select2 display (fixed in 6.12, not sure about 6.11)
+    patch:
+      src: "{{role_path}}/files/34165.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -142,18 +150,18 @@
   tags: upgrade-civi-core, upgrade-civi-patches
 
 - block:
-  # - name: The patch list
-  #   set_fact:
-  #     patch_dict:
-  #       Display FormBuilder validation errors: "https://github.com/civicrm/civicrm-core/pull/25823.diff"
-  # - name: Add patches to Composer
-  #   shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
-  #   register: updated_composer
-  # # Gotta use a template and not copy because of https://github.com/ansible/ansible/issues/34595#issuecomment-356091161.
-  # - name: Write out the new composer.json
-  #   template:
-  #     src: composer.json.j2
-  #     dest: "{{ gitroot }}/composer.json"
+  - name: The patch list
+    set_fact:
+      patch_dict:
+        Select2 visual regression: "https://github.com/civicrm/civicrm-core/pull/34165.diff"
+  - name: Add patches to Composer
+    shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
+    register: updated_composer
+  # Gotta use a template and not copy because of https://github.com/ansible/ansible/issues/34595#issuecomment-356091161.
+  - name: Write out the new composer.json
+    template:
+      src: composer.json.j2
+      dest: "{{ gitroot }}/composer.json"
   - name: Update Civi via Composer
     composer:
       command: require
