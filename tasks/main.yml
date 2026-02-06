@@ -105,6 +105,14 @@
   tags: upgrade-civi-core
 
 - block:
+  - name: Patch PR#34721. Backport fix to afform JWT submission token.
+    patch:
+      src: "{{role_path}}/files/34721.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#34165.  Fix regression in Select2 display (fixed in 6.12, not sure about 6.11)
     patch:
       src: "{{role_path}}/files/34165.diff"

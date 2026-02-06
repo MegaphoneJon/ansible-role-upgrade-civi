@@ -1,0 +1,23 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php b/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
+index e548a34b3cda..65c487f99571 100644
+--- a/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
++++ b/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
+@@ -876,7 +876,7 @@ public static function getJoinAllowedAction(array $mainEntity, string $joinEntit
+    */
+   public function replaceTokens(string $text): string {
+     $matches = [];
+-    preg_match_all('/[[a-zA-Z0-9_]{1,}\.[0-9]{1,}\.[^]]+]/', $text, $matches);
++    preg_match_all('/[[a-zA-Z0-9_]{1,}+]/', $text, $matches);
+ 
+     foreach ($matches[0] as $match) {
+       // strip [ ] and split on .
+@@ -890,6 +890,9 @@ public function replaceTokens(string $text): string {
+       else {
+         $value = $this->_entityValues[$entityName][$index]['fields'][$field];
+       }
++      if ($entityName === 'token') {
++        $value = $this->_response['token'] ?? '';
++      }
+       $text = str_replace($match, $value, $text);
+     }
+ 
