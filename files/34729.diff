@@ -1,0 +1,25 @@
+diff --git a/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php b/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
+index e548a34b3cda..add60f26494f 100644
+--- a/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
++++ b/ext/afform/core/Civi/Api4/Action/Afform/AbstractProcessor.php
+@@ -868,7 +868,9 @@ public static function getJoinAllowedAction(array $mainEntity, string $joinEntit
+   /**
+    * Function to replace tokens with entity values in e.g. redirect urls
+    *
+-   * Tokens look like [Participant1.0.id]
++   * Most tokens look like [Participant1.0.id]
++   *
++   * Except for special case of JWT submission token [token]
+    *
+    * @param string $text
+    *
+@@ -893,6 +895,9 @@ public function replaceTokens(string $text): string {
+       $text = str_replace($match, $value, $text);
+     }
+ 
++    // handle special case of JWT token token
++    $text = str_replace('[token]', $this->_response['token'] ?? '', $text);
++
+     return $text;
+   }
+ 

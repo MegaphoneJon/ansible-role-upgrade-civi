@@ -105,9 +105,9 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#34721. Backport fix to afform JWT submission token.
+  - name: Patch PR#34729. Backport fix to afform JWT submission token.
     patch:
-      src: "{{role_path}}/files/34721.diff"
+      src: "{{role_path}}/files/34729.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
