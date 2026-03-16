@@ -1,0 +1,22 @@
+diff --git a/CRM/Contribute/Form/Contribution/Confirm.php b/CRM/Contribute/Form/Contribution/Confirm.php
+index 3e1eafb01d8..66a5f81edd8 100644
+--- a/CRM/Contribute/Form/Contribution/Confirm.php
++++ b/CRM/Contribute/Form/Contribution/Confirm.php
+@@ -211,6 +211,7 @@ private function getBasePaymentParams(): array {
+     $paymentParams['campaign_id'] = $this->getCampaignID();
+     $paymentParams['currency'] = $this->getCurrency();
+     $paymentParams['description'] = $this->getSource();
++    $paymentParams['contactID'] = $this->getContactID();
+     return $paymentParams;
+   }
+ 
+@@ -1721,7 +1722,8 @@ protected function postProcessMembership(
+       // be performed yet, so do it now.
+       if (!$this->isSeparatePaymentSelected()) {
+         $paymentParams['amount'] = $this->getMainContributionAmount();
+-        $paymentParams += $this->getBasePaymentParams();
++        $paymentParams['currency'] = $this->getCurrency();
++        $paymentParams = $this->getBasePaymentParams() + $paymentParams;
+         $paymentActionResult = $payment->doPayment($paymentParams);
+         $paymentResults[] = ['contribution_id' => $paymentResult['contribution']->id, 'result' => $paymentActionResult];
+       }

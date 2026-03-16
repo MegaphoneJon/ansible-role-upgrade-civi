@@ -44,7 +44,7 @@
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
-#      content: "6.4.1"
+#      content: "6.11.2"
 #  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
@@ -113,14 +113,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#34165.  Fix regression in Select2 display (fixed in 6.12, not sure about 6.11)
-    patch:
-      src: "{{role_path}}/files/34165.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -129,13 +121,29 @@
       strip: 1
     become: yes
 
-  - name: Print/merge documents on Grants
+  - name: Patch PR#35076.  Multilingual index issue.
     patch:
-      src: "{{role_path}}/files/30321.diff"
+      src: "{{role_path}}/files/35076.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
+
+  - name: Patch PR#35099. Memberships with Stripe issue.
+    patch:
+      src: "{{role_path}}/files/35099.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+#  - name: Print/merge documents on Grants
+#    patch:
+#      src: "{{role_path}}/files/30321.diff"
+#      backup: false
+#      basedir: "{{ civiroot }}"
+#      strip: 1
+#    become: yes
 
   - name: Patch VERP for Delta
     patch:

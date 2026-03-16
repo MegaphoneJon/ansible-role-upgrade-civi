@@ -1,40 +1,61 @@
-diff --git a/CRM/Core/Task.php b/CRM/Core/Task.php
-index 4882653c3c17..f6067790c1f0 100644
---- a/CRM/Core/Task.php
-+++ b/CRM/Core/Task.php
-@@ -153,15 +153,15 @@ public static function corePermissionedTaskTitles($tasks, $permission, $params)
-    *   the set of tasks for a group of participants
-    */
-   public static function getTask($value) {
--    static::tasks();
-+    $tasks = self::$_tasks = static::tasks();
- 
--    if (empty(self::$_tasks[$value])) {
-+    if (empty($tasks[$value])) {
-       // Children can specify a default task (eg. print), pick another if it is not valid.
--      $value = key(self::$_tasks);
-+      $value = key($tasks);
-     }
-     return [
--      self::$_tasks[$value]['class'] ?? NULL,
--      self::$_tasks[$value]['result'] ?? NULL,
-+      $tasks[$value]['class'] ?? '',
-+      $tasks[$value]['result'] ?? '',
-     ];
-   }
- 
-diff --git a/deleted-files-list.json b/deleted-files-list.json
-index 390020b7fccb..b4ea91e62a1a 100644
---- a/deleted-files-list.json
-+++ b/deleted-files-list.json
-@@ -943,7 +943,6 @@
-     "ext/civicrm_search_ui/managed/SavedSearch_label_format.mgd.php",
-     "ext/civigrant/CRM/Grant/Info.php",
-     "ext/civigrant/CRM/Grant/Page/Tab.php",
--    "ext/civigrant/Civi/Api4/Service/*",
-     "ext/civigrant/ang/afsearchGrants.aff.html",
-     "ext/civigrant/ang/afsearchGrants.aff.json",
-     "ext/civigrant/ang/afsearchTabGrant.aff.json",
+diff --git a/ext/civigrant/CRM/Grant/Controller/Task.php b/ext/civigrant/CRM/Grant/Controller/Task.php
+new file mode 100644
+index 000000000000..06c89a4db657
+--- /dev/null
++++ b/ext/civigrant/CRM/Grant/Controller/Task.php
+@@ -0,0 +1,52 @@
++<?php
++/*
++ +--------------------------------------------------------------------+
++ | Copyright CiviCRM LLC. All rights reserved.                        |
++ |                                                                    |
++ | This work is published under the GNU AGPLv3 license with some      |
++ | permitted exceptions and without any warranty. For full license    |
++ | and copyright information, see https://civicrm.org/licensing       |
++ +--------------------------------------------------------------------+
++ */
++
++/**
++ * Class CRM_Export_Controller_Standalone
++ */
++class CRM_Grant_Controller_Task extends CRM_Core_Controller_Task {
++
++  /**
++   * Get the name used to construct the class.
++   *
++   * @return string
++   */
++  public function getEntity():string {
++    return 'Grant';
++  }
++
++  /**
++   * Get the available tasks for the entity.
++   *
++   * @return array
++   */
++  public function getAvailableTasks():array {
++    return CRM_Grant_Task::tasks();
++  }
++
++  /**
++   * Override parent to avoid e-notice if the page is 'Search'.
++   *
++   * There are no form values for Search when the standalone processor is used
++   * - move along.
++   *
++   * @param string $pageName
++   *
++   * @return array
++   */
++  public function exportValues($pageName = NULL) {
++    if ($pageName === 'Search') {
++      return [];
++    }
++    return parent::exportValues($pageName);
++  }
++
++}
 diff --git a/ext/civigrant/CRM/Grant/Form/Task.php b/ext/civigrant/CRM/Grant/Form/Task.php
 index 5e5cddb7c456..7cb14af9d85d 100644
 --- a/ext/civigrant/CRM/Grant/Form/Task.php
@@ -190,64 +211,6 @@ index d8fe85c10de0..52c199126aaa 100644
        ];
  
        if (!CRM_Core_Permission::check('delete in CiviGrant')) {
-diff --git a/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php b/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php
-new file mode 100644
-index 000000000000..b6de45650629
---- /dev/null
-+++ b/ext/civigrant/Civi/Api4/Service/GrantTasksProvider.php
-@@ -0,0 +1,52 @@
-+<?php
-+/*
-+ +--------------------------------------------------------------------+
-+ | Copyright CiviCRM LLC. All rights reserved.                        |
-+ |                                                                    |
-+ | This work is published under the GNU AGPLv3 license with some      |
-+ | permitted exceptions and without any warranty. For full license    |
-+ | and copyright information, see https://civicrm.org/licensing       |
-+ +--------------------------------------------------------------------+
-+ */
-+
-+namespace Civi\Api4\Service;
-+
-+use CRM_Grant_ExtensionUtil as E;
-+use Civi\Core\Event\GenericHookEvent;
-+
-+/**
-+ * @service
-+ * @internal
-+ */
-+class GrantTasksProvider extends \Civi\Core\Service\AutoSubscriber {
-+
-+  public static function getSubscribedEvents(): array {
-+    return [
-+      'hook_civicrm_searchKitTasks' => 'addGrantTasks',
-+    ];
-+  }
-+
-+  /**
-+   * @param \Civi\Core\Event\GenericHookEvent $event
-+   */
-+  public function addGrantTasks(GenericHookEvent $event): void {
-+    // FIXME: CRM_Grant_Task::tasks() should respect `$this->checkPermissions`
-+    foreach (\CRM_Grant_Task::tasks() as $id => $task) {
-+      if (!empty($task['url'])) {
-+        $path = explode('?', $task['url'], 2)[0];
-+        $menu = \CRM_Core_Menu::get($path);
-+        $key = $menu ? \CRM_Core_Key::get($menu['page_callback'], TRUE) : '';
-+
-+        $event->tasks['Grant']['grant.' . $id] = [
-+          'title' => $task['title'],
-+          'icon' => $task['icon'] ?? 'fa-gear',
-+          'crmPopup' => [
-+            'path' => "'{$task['url']}'",
-+            'data' => "{id: ids.join(','), qfKey: '$key'}",
-+          ],
-+        ];
-+      }
-+    }
-+  }
-+
-+}
 diff --git a/ext/civigrant/templates/CRM/Grant/Form/Task/PDF.tpl b/ext/civigrant/templates/CRM/Grant/Form/Task/PDF.tpl
 new file mode 100644
 index 000000000000..2a0867644d11
@@ -269,10 +232,10 @@ index 000000000000..2a0867644d11
 +  <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="bottom"}</div>
 +</div>
 diff --git a/ext/civigrant/xml/Menu/Grant.xml b/ext/civigrant/xml/Menu/Grant.xml
-index c226716a81e8..09a9b8887a70 100644
+index 6eb7cc4c85e3..af07dd4d77be 100644
 --- a/ext/civigrant/xml/Menu/Grant.xml
 +++ b/ext/civigrant/xml/Menu/Grant.xml
-@@ -34,4 +34,10 @@
+@@ -26,4 +26,10 @@
       <page_callback>CRM_Grant_Form_GrantView</page_callback>
       <access_arguments>access CiviGrant</access_arguments>
    </item>

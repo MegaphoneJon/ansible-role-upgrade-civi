@@ -1,0 +1,13 @@
+diff --git a/CRM/Core/BAO/SchemaHandler.php b/CRM/Core/BAO/SchemaHandler.php
+index 52d05af1df2..77fe0e683e0 100644
+--- a/CRM/Core/BAO/SchemaHandler.php
++++ b/CRM/Core/BAO/SchemaHandler.php
+@@ -457,7 +457,7 @@ public static function getIndexes($tables) {
+     $indexes = [];
+     foreach ($tables as $table) {
+       $query = "SHOW INDEX FROM $table";
+-      $dao = CRM_Core_DAO::executeQuery($query);
++      $dao = CRM_Core_DAO::executeQuery($query, i18nRewrite: FALSE);
+ 
+       $tableIndexes = [];
+       while ($dao->fetch()) {
