@@ -41,11 +41,11 @@
   become: no
   tags: upgrade-civi-core, upgrade-civi-patches
 
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "6.11.2"
-#  tags: upgrade-civi-core
+- name: Fake an older version of CiviCRM
+  set_fact:
+    civi_ver:
+      content: "6.12.3"
+  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
@@ -105,14 +105,6 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#34729. Backport fix to afform JWT submission token.
-    patch:
-      src: "{{role_path}}/files/34729.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -169,7 +161,7 @@
   - name: The patch list
     set_fact:
       patch_dict:
-        Select2 visual regression: "https://github.com/civicrm/civicrm-core/pull/34165.diff"
+        Memberships with Stripe issue: "https://github.com/civicrm/civicrm-core/pull/35099.diff"
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] += {{ patch_dict | to_json }}' {{ gitroot }}/composer.json"
     register: updated_composer
