@@ -1,0 +1,8 @@
+---
+# Site-specific patches to apply to civicrm/civicrm-core in composer.json.
+# Override this in host_vars or group_vars for sites that need patches beyond
+# the role-wide patch_dict. Keys are human-readable labels; values are patch URLs.
+# Example:
+#   site_patch_dict:
+#     My site-specific fix: "https://github.com/civicrm/civicrm-core/pull/99999.diff"
+site_patch_dict: {}
