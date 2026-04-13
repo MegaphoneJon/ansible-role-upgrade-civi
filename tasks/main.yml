@@ -160,8 +160,9 @@
 - block:
   - name: The patch list
     set_fact:
-      patch_dict:
-        Memberships with Stripe issue: "https://github.com/civicrm/civicrm-core/pull/35099.diff"
+      # patch_dict:
+      #   Memberships with Stripe issue: "https://github.com/civicrm/civicrm-core/pull/35099.diff"
+      patch_dict: {}
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] = ({{ patch_dict | to_json }} * {{ site_patch_dict | to_json }})' {{ gitroot }}/composer.json"
     register: updated_composer
