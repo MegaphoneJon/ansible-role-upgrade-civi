@@ -121,14 +121,6 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#35099. Memberships with Stripe issue.
-    patch:
-      src: "{{role_path}}/files/35099.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
 #  - name: Print/merge documents on Grants
 #    patch:
 #      src: "{{role_path}}/files/30321.diff"
