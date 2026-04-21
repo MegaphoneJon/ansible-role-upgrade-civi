@@ -121,6 +121,14 @@
       strip: 1
     become: yes
 
+  - name: Patch PR#35437.  Don't show empty custom fields in workflow messages.
+    patch:
+      src: "{{role_path}}/files/35437.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
 #  - name: Print/merge documents on Grants
 #    patch:
 #      src: "{{role_path}}/files/30321.diff"
