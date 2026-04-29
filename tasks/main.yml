@@ -1,4 +1,5 @@
 ---
+#FIXME: Why are there "civicrm = yes" everywhere?
 - name: Ensure file owner/perms are correct
   file:
     path: "{{ webroot }}"
@@ -25,7 +26,7 @@
   command: git rev-parse HEAD
   args:
     chdir: "{{ webroot }}"
-  register: latest_commit
+  register: starting_commit
   become: yes
   become_user: "{{ run_as_user }}"
   changed_when: FALSE
@@ -97,13 +98,6 @@
   when: cms == 'WordPress'
   tags: upgrade-civi-core
 
-- name: Upgrade the Civi DB
-  command: "cv -n upgrade:db --cwd {{ webroot }}"
-  become: yes
-  become_user: "{{ run_as_user }}"
-  when: cms != "Drupal8"
-  tags: upgrade-civi-core
-
 - block:
   - name: Patch PR#30678.  POST support for application/json.
     patch:
@@ -113,7 +107,7 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#35076.  Multilingual index issue.
+  - name: Patch PR#35076.  Multilingual index issue. (in 6.14)
     patch:
       src: "{{role_path}}/files/35076.diff"
       backup: false
@@ -160,17 +154,20 @@
 - block:
   - name: The patch list
     set_fact:
-      # patch_dict:
-      #   Memberships with Stripe issue: "https://github.com/civicrm/civicrm-core/pull/35099.diff"
+#      patch_dict:
+#        no pay later unless requested: "https://github.com/civicrm/civicrm-core/commit/c175060d6e29ffc6312d88870de307a2e7d2b5ca.diff"
       patch_dict: {}
+
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] = ({{ patch_dict | to_json }} * {{ site_patch_dict | to_json }})' {{ gitroot }}/composer.json"
     register: updated_composer
+
   # Gotta use a template and not copy because of https://github.com/ansible/ansible/issues/34595#issuecomment-356091161.
   - name: Write out the new composer.json
     template:
       src: composer.json.j2
       dest: "{{ gitroot }}/composer.json"
+
   - name: Update Civi via Composer
     composer:
       command: require
@@ -179,13 +176,8 @@
     when: civicrm == 'Yes' # and installed_version != civi_ver.content
     become: yes
     become_user: "{{ run_as_user }}"
-  - name: Upgrade the Civi DB
-    command: "cv -n upgrade:db --cwd {{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
   when: cms == "Drupal8"
   tags: upgrade-civi-core, upgrade-civi-patches
-
 
 - name: git add Civi + patches
   command: git add -v -A
@@ -269,20 +261,37 @@
   changed_when: false
   tags: upgrade-extensions
 
+- name: Get final git commit hash
+  command: git rev-parse HEAD
+  args:
+    chdir: "{{ webroot }}"
+  register: ending_commit
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: FALSE
+  tags: upgrade-extensions
+
+- name: Upgrade the Civi DB
+  command: "cv -n upgrade:db --cwd {{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  tags: upgrade-civi-core
+  when: ending_commit.stdout != starting_commit.stdout and civicrm == 'Yes'
+
 - name: Get git changelog
-  command: "git log --oneline {{ latest_commit.stdout }}..HEAD"
+  command: "git log --oneline {{ starting_commit.stdout }}..HEAD"
   args:
     chdir: "{{ webroot }}"
   register: changelog
   become: yes
   become_user: "{{ run_as_user }}"
   changed_when: FALSE
-  when: latest_commit.stdout is defined and civicrm == 'Yes'
+  when: starting_commit.stdout is defined and civicrm == 'Yes'
   tags: upgrade-extensions
 
 - name: Print git changelog
   debug:
     var: changelog.stdout
   changed_when: FALSE
-  when: latest_commit.stdout is defined and civicrm == 'Yes'
+  when: starting_commit.stdout is defined and civicrm == 'Yes'
   tags: upgrade-extensions
