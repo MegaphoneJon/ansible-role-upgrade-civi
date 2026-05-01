@@ -1,5 +1,4 @@
 ---
-#FIXME: Why are there "civicrm = yes" everywhere?
 - name: Ensure file owner/perms are correct
   file:
     path: "{{ webroot }}"
@@ -71,13 +70,15 @@
   changed_when: false
   tags: upgrade-civi-core
 
+# FIXME: We do this even when the version's not incremented because of the patches below.
+# But maybe it's OK not to? The patching is supposedly idempotent.
 - name: Delete the old Civi
   file:
     path: "{{ civiroot }}"
     state: absent
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms != 'Drupal8' and civicrm == 'Yes' # and installed_version != civi_ver.content
+  when: cms != 'Drupal8' and installed_version != civi_ver.content
   tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.tar.gz)
@@ -86,7 +87,7 @@
     dest: "{{ civiroot | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: (cms == 'Drupal' or cms == 'Backdrop') # and installed_version != civi_ver.content
+  when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
   tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.zip)
@@ -95,7 +96,7 @@
     dest: "{{ civiroot | dirname | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms == 'WordPress'
+  when: cms == 'WordPress' and installed_version != civi_ver.content
   tags: upgrade-civi-core
 
 - block:
@@ -252,10 +253,11 @@
   when: item is defined and item != "null" and item.key not in extension_redlist and civicrm == 'Yes' and (only_upgrade is not defined or item.key in only_upgrade.split(','))
   tags: upgrade-extensions
 
-- name: Check for pending extension database updates
-  command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+- name: Check for pending database updates
+  command: "cv ev 'return (bool) (CRM_Core_BAO_Domain::isDBUpdateRequired() || CRM_Extension_Upgrades::hasPending());' --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
+  register: pending_updates
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
   changed_when: false
@@ -275,8 +277,8 @@
   command: "cv -n upgrade:db --cwd {{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  tags: upgrade-civi-core
-  when: ending_commit.stdout != starting_commit.stdout and civicrm == 'Yes'
+  tags: upgrade-civi-core, upgrade-extensions, upgrade-db
+  when: pending_updates.stdout == 1
 
 - name: Get git changelog
   command: "git log --oneline {{ starting_commit.stdout }}..HEAD"
@@ -286,12 +288,12 @@
   become: yes
   become_user: "{{ run_as_user }}"
   changed_when: FALSE
-  when: starting_commit.stdout is defined and civicrm == 'Yes'
+  when: starting_commit.stdout is defined
   tags: upgrade-extensions
 
 - name: Print git changelog
   debug:
     var: changelog.stdout
   changed_when: FALSE
-  when: starting_commit.stdout is defined and civicrm == 'Yes'
+  when: starting_commit.stdout is defined
   tags: upgrade-extensions
