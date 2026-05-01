@@ -78,7 +78,7 @@
     state: absent
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms != 'Drupal8' and installed_version != civi_ver.content
+  when: cms != 'Drupal8' and version_xml.matches[0].version_no != civi_ver.content
   tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.tar.gz)
@@ -87,7 +87,7 @@
     dest: "{{ civiroot | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: (cms == 'Drupal' or cms == 'Backdrop') and installed_version != civi_ver.content
+  when: (cms == 'Drupal' or cms == 'Backdrop') and version_xml.matches[0].version_no != civi_ver.content
   tags: upgrade-civi-core
 
 - name: Unarchive the files into civiroot (.zip)
@@ -96,7 +96,7 @@
     dest: "{{ civiroot | dirname | dirname }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  when: cms == 'WordPress' and installed_version != civi_ver.content
+  when: cms == 'WordPress' and version_xml.matches[0].version_no != civi_ver.content
   tags: upgrade-civi-core
 
 - block:

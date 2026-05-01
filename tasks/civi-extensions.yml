@@ -5,7 +5,6 @@
     chdir: "{{ webroot }}"
   become: yes
   become_user: "{{ run_as_user }}"
-  notify: Apply extension database upgrades
 
   #- name: Apply CiviDiscount patch
   # patch:
