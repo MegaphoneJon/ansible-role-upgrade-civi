@@ -278,7 +278,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   tags: upgrade-civi-core, upgrade-extensions, upgrade-db
-  when: pending_updates.stdout == 1
+  when: pending_updates.stdout == 'true'
 
 - name: Get git changelog
   command: "git log --oneline {{ starting_commit.stdout }}..HEAD"
