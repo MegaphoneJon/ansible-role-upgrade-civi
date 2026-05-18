@@ -32,8 +32,8 @@
   tags: upgrade-extensions
 
 - name: Get the latest CiviCRM version number
-  local_action:
-    module: uri
+  local_action: uri
+  args:
     url: https://latest.civicrm.org/stable.php
     return_content: yes
   run_once: true
@@ -49,8 +49,8 @@
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
 - name: Download stable versions of Civi
-  local_action:
-    module: get_url
+  local_action: get_url
+  args:
     url: "https://download.civicrm.org/{{ item }}"
     dest: "/tmp/{{ item }}"
   run_once: true
@@ -100,6 +100,14 @@
   tags: upgrade-civi-core
 
 - block:
+  - name: Patch PR#35684. SK actions as buttons.
+    patch:
+      src: "{{role_path}}/files/35684.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#30678.  POST support for application/json.
     patch:
       src: "{{role_path}}/files/30678.diff"
@@ -248,7 +256,7 @@
     apply:
       tags: upgrade-extensions
   with_items:
-    - "{{ extensions.stdout }}"
+    - "{{ extensions.stdout | from_json }}"
     - "{{ forced_ext_upgrades }}"
   when: item is defined and item != "null" and item.key not in extension_redlist and civicrm == 'Yes' and (only_upgrade is not defined or item.key in only_upgrade.split(','))
   tags: upgrade-extensions
