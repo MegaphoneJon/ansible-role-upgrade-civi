@@ -100,6 +100,22 @@
   tags: upgrade-civi-core
 
 - block:
+  - name: Patch PR#35455. SearchKit totals. (in 6.15)
+    patch:
+      src: "{{role_path}}/files/35455.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: Patch PR#35674. Allow regexp on integers in SK. (in 6.16?)
+    patch:
+      src: "{{role_path}}/files/35674.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: Patch PR#35684. SK actions as buttons.
     patch:
       src: "{{role_path}}/files/35684.diff"
