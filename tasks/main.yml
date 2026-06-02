@@ -291,8 +291,6 @@
   become: yes
   become_user: "{{ run_as_user }}"
   register: pending_updates
-  environment:
-    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
   changed_when: false
   tags: upgrade-extensions
 
@@ -326,7 +324,7 @@
 
 - name: Print git changelog
   debug:
-    var: changelog.stdout
+    var: changelog.stdout_lines
   changed_when: FALSE
   when: starting_commit.stdout is defined
   tags: upgrade-extensions
