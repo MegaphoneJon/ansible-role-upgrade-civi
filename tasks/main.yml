@@ -21,6 +21,15 @@
   when: git_repo_url is not none
   tags: upgrade-extensions, upgrade-civi-core, upgrade-civi-patches
 
+- name: Create or reset upgrade branch
+  command: git checkout -B upgrade
+  args:
+    chdir: "{{ gitroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: upgrade_use_branch
+  tags: upgrade-extensions, upgrade-civi-core, upgrade-civi-patches
+
 - name: Get current git commit hash
   command: git rev-parse HEAD
   args:
@@ -227,7 +236,7 @@
   tags: upgrade-civi-core, upgrade-civi-patches
 
 - name: git push
-  command: "git push"
+  command: "git push{{ ' -u origin upgrade' if upgrade_use_branch else '' }}"
   args:
     chdir: "{{ webroot }}"
   register: push_result
