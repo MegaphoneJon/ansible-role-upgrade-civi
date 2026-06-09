@@ -53,7 +53,7 @@
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
-#      content: "6.12.3"
+#      content: "6.14.2"
 #  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
@@ -109,14 +109,6 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#35455. SearchKit totals. (in 6.15)
-    patch:
-      src: "{{role_path}}/files/35455.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
   - name: Patch PR#35674. Allow regexp on integers in SK. (in 6.16?)
     patch:
       src: "{{role_path}}/files/35674.diff"
@@ -125,31 +117,15 @@
       strip: 1
     become: yes
 
-  - name: Patch PR#35684. SK actions as buttons.
+  - name: Patch PR#35562.  Rich text FB confirmations. (in 6.16)
     patch:
-      src: "{{role_path}}/files/35684.diff"
+      src: "{{role_path}}/files/35562.diff"
       backup: false
       basedir: "{{ civiroot }}"
       strip: 1
     become: yes
 
-  - name: Patch PR#30678.  POST support for application/json.
-    patch:
-      src: "{{role_path}}/files/30678.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#35076.  Multilingual index issue. (in 6.14)
-    patch:
-      src: "{{role_path}}/files/35076.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#35437.  Don't show empty custom fields in workflow messages.
+  - name: Patch PR#35437.  Don't show empty custom fields in workflow messages. (in 6.16)
     patch:
       src: "{{role_path}}/files/35437.diff"
       backup: false
@@ -188,9 +164,9 @@
 - block:
   - name: The patch list
     set_fact:
-#      patch_dict:
-#        no pay later unless requested: "https://github.com/civicrm/civicrm-core/commit/c175060d6e29ffc6312d88870de307a2e7d2b5ca.diff"
-      patch_dict: {}
+      patch_dict:
+        Rich text FB confirmations: "https://github.com/civicrm/civicrm-core/pull/35562.diff"
+#      patch_dict: {}
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] = ({{ patch_dict | to_json }} * {{ site_patch_dict | to_json }})' {{ gitroot }}/composer.json"
@@ -292,7 +268,7 @@
   become_user: "{{ run_as_user }}"
   register: pending_updates
   changed_when: false
-  tags: upgrade-extensions
+  tags: upgrade-civi-core,upgrade-extensions,upgrade-db
 
 - name: Get final git commit hash
   command: git rev-parse HEAD

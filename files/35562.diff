@@ -1,0 +1,835 @@
+diff --git a/ang/crmUtil.ang.php b/ang/crmUtil.ang.php
+index 502fab5e17d9..092aa0417c2a 100644
+--- a/ang/crmUtil.ang.php
++++ b/ang/crmUtil.ang.php
+@@ -2,6 +2,9 @@
+ // This file declares an Angular module which can be autoloaded
+ return [
+   'ext' => 'civicrm',
+-  'js' => ['ang/crmUtil.js'],
++  'js' => [
++    'ang/crmUtil.js',
++    'ang/crmUtil/*.js',
++  ],
+   'requires' => [],
+ ];
+diff --git a/ang/crmUtil/crmCustomElementModel.js b/ang/crmUtil/crmCustomElementModel.js
+new file mode 100644
+index 000000000000..b29ef9e74bac
+--- /dev/null
++++ b/ang/crmUtil/crmCustomElementModel.js
+@@ -0,0 +1,21 @@
++// https://civicrm.org/licensing
++(function (angular, $, _) {
++  "use strict";
++
++  /**
++   * Allows using ng-model with a custom element like civi-rich-text-input
++   */
++  angular.module("crmUtil").directive("crmCustomElementModel", () => ({
++    restrict: "A",
++    require: 'ngModel',
++    link: function ($scope, $element, attributes, ngModelController) {
++      // get the native element
++      const element = $element[0];
++      // update element value from angular in render hook
++      ngModelController.$render = () => element.value = ngModelController.$viewValue;
++      // update angular value from element when element is changed
++      element.addEventListener('change', () => ngModelController.$setViewValue(element.value));
++    }
++  }));
++
++})(angular, CRM.$, CRM._);
+diff --git a/ext/afform/admin/ang/afGuiEditor.css b/ext/afform/admin/ang/afGuiEditor.css
+index 681f31f984d2..93126aad642d 100644
+--- a/ext/afform/admin/ang/afGuiEditor.css
++++ b/ext/afform/admin/ang/afGuiEditor.css
+@@ -713,3 +713,8 @@ body.af-gui-dragging {
+ #bootstrap-theme.af-gui-conditional-dialog .api4-operator {
+   width: 110px;
+ }
++
++/* hide label token pickers until editing */
++.af-gui-node-title:not(:focus-within) af-gui-token-select[field="label"] {
++  visibility: hidden;
++}
+diff --git a/ext/afform/admin/ang/afGuiEditor/afGuiEditor.component.js b/ext/afform/admin/ang/afGuiEditor/afGuiEditor.component.js
+index dacad90bd10e..664b4a58d01c 100644
+--- a/ext/afform/admin/ang/afGuiEditor/afGuiEditor.component.js
++++ b/ext/afform/admin/ang/afGuiEditor/afGuiEditor.component.js
+@@ -18,7 +18,7 @@
+       mode: '@'
+     },
+     controllerAs: 'editor',
+-    controller: function($scope, crmApi4, crmUiHelp, afGui, $parse, $timeout, $location, $route, $rootScope, formatForSelect2) {
++    controller: function($scope, $element, crmApi4, crmUiHelp, afGui, $parse, $timeout, $location, $route, $rootScope, formatForSelect2) {
+       const ts = $scope.ts = CRM.ts('org.civicrm.afform_admin');
+       $scope.hs = crmUiHelp({file: 'CRM/AfformAdmin/afformBuilder'});
+ 
+@@ -711,6 +711,9 @@
+       };
+ 
+       $scope.save = function() {
++        // save and close any open rich text elements
++        $element[0].querySelectorAll('civi-rich-text-input[editing]').forEach((el) => el.saveAndCloseEditor());
++
+         const afform = JSON.parse(angular.toJson(editor.afform));
+         // This might be set to undefined by validation
+         afform.server_route = afform.server_route || '';
+@@ -804,6 +807,66 @@
+         return $location.path(newPath);
+       }
+ 
++      this.getTokens = (includeSubmissionTokens = false) => {
++        const allTokens = [];
++        this.getEntities().forEach((entity) => {
++          const entityTokens = [];
++          const entityMeta = this.meta.entities[entity.type];
++          if (entityMeta.submissionTokens && includeSubmissionTokens) {
++            // Explicitly defined submission tokens e.g. by FormProcessor extension
++            entityMeta.submissionTokens.forEach((submissionToken) => {
++              entityTokens.push({
++                id: entity.name + '.0.' + submissionToken.token,
++                text: entity.label + ' ' + submissionToken.label,
++                description: submissionToken.description ?? '',
++              });
++            });
++          } else if (!entityMeta.submissionTokens) {
++            // Primary key token
++            // FIXME: not all entities use `id` for primary key
++            if (includeSubmissionTokens) {
++              entityTokens.push({
++                id: entity.name + '.0.id',
++                text: ts('%1 ID', {1: entity.label}),
++              });
++            }
++            // Tokens from entity data values
++            if (entity.data) {
++              Object.keys(entity.data).forEach((key) => {
++                if (entityMeta.fields[key]) {
++                  entityTokens.push({
++                    id: entity.name + '.0.' + key,
++                    text: entity.label + ' ' + entityMeta.fields[key].label,
++                  });
++                }
++              });
++            }
++            // Tokens from entity fields on the form
++            this.getEntityFields(entity.name).fields.forEach((field) => {
++              entityTokens.push({
++                id: entity.name + '.0.' + field.name,
++                text: entity.label + ' ' + field.label,
++              });
++            });
++          }
++          if (entityTokens.length) {
++            allTokens.push({
++              text: entity.label,
++              children: entityTokens,
++            });
++          }
++        });
++        if (includeSubmissionTokens) {
++          allTokens.push({
++            text: ts('Form'),
++            children: [
++              {id: 'token', text: ts('Submission JWT')},
++            ],
++          });
++        }
++        return allTokens;
++      };
++
+     }
+   });
+ 
+diff --git a/ext/afform/admin/ang/afGuiEditor/afGuiTokenSelect.js b/ext/afform/admin/ang/afGuiEditor/afGuiTokenSelect.js
+index e203b339f8a4..de2f684b50cc 100644
+--- a/ext/afform/admin/ang/afGuiEditor/afGuiTokenSelect.js
++++ b/ext/afform/admin/ang/afGuiEditor/afGuiTokenSelect.js
+@@ -49,73 +49,15 @@
+         }
+       };
+ 
+-      this.getTokens = function() {
+-        const allTokens = [];
+-        ctrl.editor.getEntities().forEach((entity) => {
+-          const entityTokens = [];
+-          const entityMeta = ctrl.editor.meta.entities[entity.type];
+-          if (entityMeta.submissionTokens && !ctrl.noSubmissionTokens) {
+-            // Explicitly defined submission tokens e.g. by FormProcessor extension
+-            entityMeta.submissionTokens.forEach((submissionToken) => {
+-              entityTokens.push({
+-                id: entity.name + '.0.' + submissionToken.token,
+-                text: entity.label + ' ' + submissionToken.label,
+-                description: submissionToken.description ?? '',
+-              });
+-            });
+-          } else if (!entityMeta.submissionTokens) {
+-            // Primary key token
+-            if (!ctrl.noSubmissionTokens) {
+-              entityTokens.push({
+-                id: entity.name + '.0.id',
+-                text: ts('%1 ID', {1: entity.label}),
+-              });
+-            }
+-            // Tokens from entity data values
+-            if (entity.data) {
+-              Object.keys(entity.data).forEach((key) => {
+-                if (entityMeta.fields[key]) {
+-                  entityTokens.push({
+-                    id: entity.name + '.0.' + key,
+-                    text: entity.label + ' ' + entityMeta.fields[key].label,
+-                  });
+-                }
+-              });
+-            }
+-            // Tokens from entity fields on the form
+-            ctrl.editor.getEntityFields(entity.name).fields.forEach((field) => {
+-              entityTokens.push({
+-                id: entity.name + '.0.' + field.name,
+-                text: entity.label + ' ' + field.label,
+-              });
+-            });
+-          }
+-          if (entityTokens.length) {
+-            allTokens.push({
+-              text: entity.label,
+-              children: entityTokens,
+-            });
+-          }
+-        });
+-        if (!ctrl.noSubmissionTokens) {
+-          allTokens.push({
+-            text: ts('Form'),
+-            children: [
+-              {id: 'token', text: ts('Submission JWT')},
+-            ],
+-          });
+-        }
+-        return {
+-          results: allTokens
+-        };
+-      };
++      this.getTokens = () => ({
++        results: this.editor.getTokens(!this.noSubmissionTokens),
++      });
+ 
+       this.tokenSelectSettings = {
+         data: this.getTokens,
+         // The crm-action-menu icon doesn't show without a placeholder
+         placeholder: ' ',
+       };
+-
+     }
+   });
+ 
+diff --git a/ext/afform/admin/ang/afGuiEditor/config-form.html b/ext/afform/admin/ang/afGuiEditor/config-form.html
+index 12675f19dd96..591294842f35 100644
+--- a/ext/afform/admin/ang/afGuiEditor/config-form.html
++++ b/ext/afform/admin/ang/afGuiEditor/config-form.html
+@@ -226,8 +226,14 @@
+       <label for="af_config_confirmation_message">
+         {{:: editor.meta.afform_fields.confirmation_message.title }}
+       </label>
+-      <af-gui-token-select class="pull-right" model="editor.afform" field="confirmation_message"></af-gui-token-select>
+-      <textarea ng-model="editor.afform.confirmation_message" class="form-control" id="af_config_confirmation_message" ng-model-options="editor.debounceMode"></textarea>
++      <civi-rich-text-input
++        id="af_config_confirmation_message"
++        class="form-control"
++        crm-custom-element-model
++        ng-model="editor.afform.confirmation_message"
++        token-picker
++        include-submission-tokens
++      ></civi-rich-text-input>
+       <p class="help-block">{{:: ts("This message wil be displayed when the form is submitted.") }}</p>
+     </div>
+ 
+diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.html b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.html
+index 2f022361110f..fe738e3e591b 100644
+--- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.html
++++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiField.html
+@@ -10,14 +10,17 @@
+       </div>
+     </div>
+   </div>
+-  <label ng-style="{visibility: $ctrl.showLabel() ? 'visible' : 'hidden'}" ng-class="{'af-gui-field-required': getProp('required')}" class="af-gui-node-title">
+-    <span crm-ui-editable ng-model="getSet('label')" ng-model-options="{getterSetter: true}" default-value="$ctrl.getDefn().label">{{ getProp('label') }}</span>
+-  </label>
++  <div class="af-gui-node-title" ng-show="$ctrl.showLabel()">
++    <label ng-show="$ctrl.showLabel()" ng-class="{'af-gui-field-required': getProp('required')}">
++      <span crm-ui-editable ng-model="getSet('label')" ng-model-options="{getterSetter: true}" default-value="$ctrl.getDefn().label">{{ getProp('label') }}</span>
++    </label>
++    <af-gui-token-select model="getSet" field="label" no-submission-tokens="true"></af-gui-token-select>
++  </div>
+   <div class="af-gui-field-help" ng-if="propIsset('help_pre')">
+-    <span crm-ui-editable ng-model="getSet('help_pre')" ng-model-options="{getterSetter: true}" default-value="$ctrl.getDefn().help_pre">{{ getProp('help_pre') }}</span>
++    <civi-rich-text-input token-picker crm-custom-element-model ng-model="getSet('help_pre')"></civi-rich-text-input>
+   </div>
+   <div class="af-gui-field-input af-gui-field-input-type-{{ getProp('input_type').toLowerCase() }}" ng-include="$ctrl.getInputTypeTemplate()"></div>
+   <div class="af-gui-field-help" ng-if="propIsset('help_post')">
+-    <span crm-ui-editable ng-model="getSet('help_post')" ng-model-options="{getterSetter: true}" default-value="$ctrl.getDefn().help_post">{{ getProp('help_post') }}</span>
++    <civi-rich-text-input token-picker crm-custom-element-model ng-model="getSet('help_post')"></civi-rich-text-input>
+   </div>
+ </div>
+diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup-menu.html b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup-menu.html
+index f857b29c2338..c37b06e3f96e 100644
+--- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup-menu.html
++++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup-menu.html
+@@ -1,5 +1,5 @@
+ <li>
+-  <a href ng-click="edit()">{{:: ts('Edit content') }}</a>
++  <a href ng-click="$ctrl.edit()">{{:: ts('Edit content') }}</a>
+ </li>
+ 
+ <li role="separator" class="divider"></li>
+diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.component.js b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.component.js
+index 9c8492189e10..22ab144fb18a 100644
+--- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.component.js
++++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.component.js
+@@ -13,48 +13,19 @@
+     require: {
+       editor: '^^afGuiEditor',
+     },
+-    controller: function($scope, $sce, $timeout) {
+-      const ts = $scope.ts = CRM.ts('org.civicrm.afform_admin'),
+-        ctrl = this;
++    controller: function($element, $scope) {
++      const ts = $scope.ts = CRM.ts('org.civicrm.afform_admin');
+ 
+-      this.$onInit = function() {
+-        // CRM.wysiwyg doesn't work without a dom id
+-        $scope.id = 'af-markup-editor-' + richtextId++;
++      this.$onInit = () => {
+ 
+         // When creating a new markup container, go straight to edit mode
+-        $timeout(() => {
+-          if (ctrl.node['#markup'] === false) {
+-            $scope.edit();
+-          }
+-        });
+-      };
+-
+-      $scope.getMarkup = function() {
+-        return $sce.trustAsHtml(ctrl.node['#markup'] || '');
+-      };
+-
+-      $scope.edit = function() {
+-        $('#afGuiEditor').addClass('af-gui-editing-content');
+-        $scope.editingMarkup = true;
+-        CRM.wysiwyg.create('#' + $scope.id);
+-        CRM.wysiwyg.setVal('#' + $scope.id, ctrl.node['#markup'] || '<p></p>');
++        if (!this.node['#markup']) {
++          this.edit();
++        }
+       };
+ 
+-      $scope.save = function() {
+-        ctrl.node['#markup'] = CRM.wysiwyg.getVal('#' + $scope.id);
+-        $scope.close();
+-      };
++      this.edit = () => $element[0].querySelector('civi-rich-text-input').openEditor();
+ 
+-      $scope.close = function() {
+-        CRM.wysiwyg.destroy('#' + $scope.id);
+-        $('#afGuiEditor').removeClass('af-gui-editing-content');
+-        // If a newly-added wysiwyg was canceled, just remove it
+-        if (ctrl.node['#markup'] === false) {
+-          $scope.container.removeElement(ctrl.node);
+-        } else {
+-          $scope.editingMarkup = false;
+-        }
+-      };
+     }
+   });
+ 
+diff --git a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.html b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.html
+index da999ac44d45..ac950d3ba697 100644
+--- a/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.html
++++ b/ext/afform/admin/ang/afGuiEditor/elements/afGuiMarkup.html
+@@ -1,5 +1,6 @@
+ <div class="af-gui-bar">
+-  <div class="form-inline pull-right">
++  <div class="form-inline">
++    <span>{{:: ts('Rich content') }}</span>
+     <div class="btn-group pull-right" af-gui-menu>
+       <button type="button" class="btn btn-default btn-xs dropdown-toggle af-gui-add-element-button" data-toggle="dropdown" title="{{:: ts('Configure') }}">
+         <span><i class="crm-i fa-gear" role="img" aria-hidden="true"></i></span>
+@@ -8,23 +9,6 @@
+     </div>
+   </div>
+ </div>
+-<div ng-if="!editingMarkup" ng-click="edit()" class="af-gui-markup-content crm-editable-enabled {{ $ctrl.node['class'] }}">
+-  <div ng-bind-html="getMarkup()" style="{{ $ctrl.node.style }}"></div>
+-  <div class="af-gui-markup-content-overlay"></div>
+-</div>
+-<div class="af-gui-content-editing-area">
+-  <div class="af-gui-edit-options-bar" ng-if="editingMarkup">
+-    <h4 class="pull-left">{{:: ts('Editing content') }}</h4>
+-    <div class="btn-group-sm pull-right">
+-      <button type="button" class="btn btn-default" ng-click="close()">
+-        <i class="crm-i fa-times-circle" role="img" aria-hidden="true"></i>
+-        {{:: ts('Cancel') }}
+-      </button>
+-      <button type="button" class="btn btn-success" ng-click="save()">
+-        <i class="crm-i fa-check-circle" role="img" aria-hidden="true"></i>
+-        {{:: ts('Done') }}
+-      </button>
+-    </div>
+-  </div>
+-  <textarea id="{{ id }}" ng-show="editingMarkup"></textarea>
+-</div>
++<div class="af-gui-markup-content {{ $ctrl.node['class'] }}" style="{{ $ctrl.node.style }}">
++  <civi-rich-text-input token-picker crm-custom-element-model ng-model="$ctrl.node['#markup']"></civi-rich-text-input>
++</div>
+\ No newline at end of file
+diff --git a/ext/afform/core/ang/af/afField.html b/ext/afform/core/ang/af/afField.html
+index 6bba2aa641da..0be925dba950 100644
+--- a/ext/afform/core/ang/af/afField.html
++++ b/ext/afform/core/ang/af/afField.html
+@@ -1,8 +1,12 @@
+ <label class="crm-af-field-label" ng-if=":: $ctrl.defn.label && !($ctrl.defn.input_type == 'CheckBox' && $ctrl.defn.data_type == 'Boolean')" for="{{:: fieldId }}">
+-  {{:: $ctrl.defn.label }}
++  <af-markup markup="{{:: $ctrl.defn.label }}"></af-markup>
+   <span class="crm-marker" title="{{:: ts('Required') }}" ng-if=":: $ctrl.defn.required">*</span>
+ </label>
+-<p class="crm-af-field-help-pre" ng-if=":: $ctrl.defn.help_pre">{{:: $ctrl.defn.help_pre }}</p>
++<p class="crm-af-field-help-pre" ng-if=":: $ctrl.defn.help_pre">
++  <af-markup markup="{{:: $ctrl.defn.help_pre }}" /></af-markup>
++</p>
+ <div class="crm-af-field" ng-if="!$ctrl.defn.expose_operator" ng-include="$ctrl.defn.template"></div>
+ <div class="input-group" ng-if="$ctrl.defn.expose_operator" ng-include="'~/af/afFieldWithSearchOperator.html'"></div>
+-<p class="crm-af-field-help-post" ng-if=":: $ctrl.defn.help_post">{{:: $ctrl.defn.help_post }}</p>
++<p class="crm-af-field-help-post" ng-if=":: $ctrl.defn.help_post">
++  <af-markup markup="{{:: $ctrl.defn.help_post }}" /></af-markup>
++</p>
+diff --git a/ext/afform/core/ang/af/afForm.component.js b/ext/afform/core/ang/af/afForm.component.js
+index 2d8436c87a90..31b487295a88 100644
+--- a/ext/afform/core/ang/af/afForm.component.js
++++ b/ext/afform/core/ang/af/afForm.component.js
+@@ -33,6 +33,13 @@
+         $scope.$parent[this.ctrl] = this;
+ 
+         $timeout(() => {
++          // render tokenised markup
++          $element[0].querySelectorAll('.af-markup:not(af-markup)').forEach((el) => {
++            const renderer = document.createElement('af-markup');
++            renderer.markup = el.innerHTML;
++            el.replaceChildren(renderer);
++          });
++
+           ctrl.loadData()
+             .then(setupDraftWatcher);
+ 
+@@ -569,15 +576,22 @@
+ 
+       // these tokens matching/replacing functions should match
+       // the serverside implementation in AbstractProcessor::replaceTokens
+-      this.identifyTokens = (message) => message?.match(/\[[a-zA-Z0-9_]+\.[0-9]+\.[^\]]+\]/g);
++      this.identifyTokens = (message) => new Set(message?.match(/\[[a-zA-Z0-9_]+\.[0-9]+\.[^\]]+\]/g));
+ 
+       this.getTokenValues = (tokens) => {
+         const values = {};
+ 
+         tokens.forEach((token) => {
+           const parts = token.slice(1, -1).split('.');
+-          values[token] = data[parts[0]][parts[1]].fields[parts.slice(2).join('.')];
+-          values[token] = (values[token] === undefined) ? '' : values[token];
++          const entity = parts[0];
++          const index = parts[1];
++          const fieldName = parts.slice(2).join('.');
++          if (!data || !data[entity] || !data[entity][index] || !data[entity][index].fields || (data[entity][index].fields[fieldName] === undefined) ) {
++            values[token] = '';
++          }
++          else {
++            values[token] = data[entity][index].fields[fieldName];
++          }
+         });
+ 
+         return values;
+@@ -586,10 +600,9 @@
+       this.replaceTokens = (message) => {
+         const tokens = this.identifyTokens(message);
+         const tokenValues = this.getTokenValues(tokens);
+-        tokens.forEach((token) => message = message.replace(token, tokenValues[token]));
++        tokens.forEach((token) => message = message.replaceAll(token, tokenValues[token]));
+         return message;
+       };
+-
+     }
+   });
+ })(angular, CRM.$, CRM._);
+diff --git a/ext/afform/core/ang/af/afMarkup.element.js b/ext/afform/core/ang/af/afMarkup.element.js
+new file mode 100644
+index 000000000000..882ba15eb277
+--- /dev/null
++++ b/ext/afform/core/ang/af/afMarkup.element.js
+@@ -0,0 +1,47 @@
++(function (CRM, angular) {
++
++
++  class AfMarkup extends HTMLElement {
++
++    /* jshint ignore:start */
++    static observedAttributes = ['markup'];
++    /* jshint ignore:end */
++
++    connectedCallback() {
++      this.afForm = this.closest('af-form');
++      if (!this.afForm) {
++        throw new Error('af-markup should be placed within an af-form');
++      }
++      // setTimeout ensures child elements can access parent af-form during render
++      setTimeout(() => this.render());
++    }
++
++    attributeChangedCallback() {
++      this.render();
++    }
++
++    render() {
++      let markup = this.markup;
++      markup = this.replaceTokensWithElements(markup);
++      this.innerHTML = markup;
++    }
++
++    get markup() {
++      return this.getAttribute('markup');
++    }
++
++    set markup(content) {
++      this.setAttribute('markup', content);
++    }
++
++    replaceTokensWithElements(markup) {
++      // @see afForm identifyTokens
++      const tokens = new Set(markup.match(/\[[a-zA-Z0-9_]+\.[0-9]+\.[^\]]+\]/g));
++      tokens?.forEach((token) => markup = markup.replaceAll(token, `<af-token expression="${token}"></af-token>`));
++      return markup;
++    }
++  }
++
++  customElements.define('af-markup', AfMarkup);
++
++})(CRM, angular);
+diff --git a/ext/afform/core/ang/af/afToken.element.js b/ext/afform/core/ang/af/afToken.element.js
+new file mode 100644
+index 000000000000..2e9be1aafe25
+--- /dev/null
++++ b/ext/afform/core/ang/af/afToken.element.js
+@@ -0,0 +1,49 @@
++(function (CRM, angular) {
++
++
++  class AfToken extends HTMLElement {
++
++    connectedCallback() {
++      this.afForm = this.closest('af-form');
++      if (!this.afForm) {
++        throw new Error('af-token should be placed within an af-form');
++      }
++
++      this.render();
++      this.registerListener();
++    }
++
++    disconnectedCallback() {
++      this.removeListener();
++    }
++
++    render() {
++      this.innerText = this.evaluate(this.expression);
++    }
++
++    registerListener() {
++      this.afForm?.addEventListener('change', () => this.render());
++    }
++
++    removeListener() {
++      this.afForm?.removeEventListener('change', () => this.render());
++    }
++
++    get expression() {
++      return this.getAttribute('expression');
++    }
++
++    get afFormCtrl() {
++      return angular.element(this.afForm).controller('afForm');
++    }
++
++    evaluate(expression) {
++      // TODO: support evaluation using Symfony Expression Language
++      return this.afFormCtrl ? this.afFormCtrl.replaceTokens(expression) : '';
++    }
++
++  }
++
++  customElements.define('af-token', AfToken);
++
++})(CRM, angular);
+\ No newline at end of file
+diff --git a/ext/riverlea/core/css/components/_form.css b/ext/riverlea/core/css/components/_form.css
+index f064f04569fa..95f306e87722 100644
+--- a/ext/riverlea/core/css/components/_form.css
++++ b/ext/riverlea/core/css/components/_form.css
+@@ -144,7 +144,8 @@ select.crm-form-multiselect,
+ select.crm-form-select,
+ .crm-container .ui-widget input,
+ .crm-container select,
+-.ui-datepicker .ui-datepicker-header select {
++.ui-datepicker .ui-datepicker-header select,
++civi-rich-text-input .rich-text-preview {
+   transition: var(--crm-input-active-transition);
+   font-size: var(--crm-input-font-size);
+   background-color: var(--crm-input-bg-color);
+@@ -992,3 +993,10 @@ span.crm-select-item-color {
+ .crm-container :is(input,textarea,option):disabled {
+   background-color: color-mix(in srgb, var(--crm-input-bg-color) 90%, var(--crm-ink) 10%);
+ }
++
++civi-rich-text-input .rich-text-preview {
++  height: unset;
++  width: unset;
++  min-height: var(--crm-input-height);
++  cursor: cell;
++}
+diff --git a/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css b/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
+index 9c9c6fda7ebb..0d22dc91a269 100644
+--- a/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
++++ b/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
+@@ -701,3 +701,17 @@ i.crm-i.af-gui-conditional-dialog-move-icon {
+   background: linear-gradient(to bottom, #f2f2f2 0 var(--crm-l-large), transparent var(--crm-l-large) 100%) no-repeat;
+   border-radius: var(--crm-l-radius);
+ }
++
++/* hide label token pickers until editing */
++.af-gui-node-title:not(:focus-within) af-gui-token-select[field="label"] {
++  visibility: hidden;
++}
++
++/* suppress input styling on form elements */
++af-gui-container civi-rich-text-input .rich-text-preview {
++  border: none;
++  background: none;
++}
++af-gui-container civi-rich-text-input .rich-text-preview:hover {
++  outline: 2px dashed var(--crm-c-blue-dark);
++}
+diff --git a/js/Common.js b/js/Common.js
+index 56a6fd790eed..c9ed565a3dcc 100644
+--- a/js/Common.js
++++ b/js/Common.js
+@@ -1297,11 +1297,11 @@ if (!CRM.vars) CRM.vars = {};
+       $('form[data-warn-changes] :input', e.target).each(function() {
+         $(this).data('crm-initial-value', $(this).is(':checkbox, :radio') ? $(this).prop('checked') : $(this).val());
+       });
+-      $('textarea.crm-form-wysiwyg', e.target).each(function() {
+-        if ($(this).hasClass("collapsed")) {
+-          CRM.wysiwyg.createCollapsed(this);
++      e.target.querySelectorAll('textarea.crm-form-wysiwyg').forEach((el) => {
++        if (el.classList.contains('collapsed')) {
++          CRM.wysiwyg.createCollapsed(el);
+         } else {
+-          CRM.wysiwyg.create(this);
++          CRM.wysiwyg.create(el);
+         }
+       });
+       // Submit once handlers
+diff --git a/js/wysiwyg/crm.wysiwyg.js b/js/wysiwyg/crm.wysiwyg.js
+index b18d464d2ad9..78d2a39c7ded 100644
+--- a/js/wysiwyg/crm.wysiwyg.js
++++ b/js/wysiwyg/crm.wysiwyg.js
+@@ -2,6 +2,156 @@
+ (function($, _) {
+   // This defines an interface which by default only handles plain textareas
+   // A wysiwyg implementation can extend this by overriding as many of these functions as needed
++
++  let richTextInputId = 0;
++
++  /**
++   * A rich text input with a preview mode
++   *   <civi-rich-text-input></civi-rich-text-input>
++   *
++   */
++  class CiviRichTextInput extends HTMLElement {
++
++    constructor() {
++      super();
++
++      // initialise child input
++      // NOTE: we need to do this here rather than render in order to persist
++      // the input value across connection/disconnection
++      this.input = document.createElement('textarea');
++      // generate a unique id for the element as required by ckeditor etc
++      this.input.id = 'civiRichTextInput' + richTextInputId++;
++      this.input.style.display = 'none';
++    }
++
++    connectedCallback() {
++      this.render();
++    }
++
++    render() {
++      this.innerHTML = `
++        <div class="rich-text-toolbar crm-buttons" style="display: none;">
++          <button type="button" class="crm-button rich-text-cancel">
++            <i class="crm-i fa-cancel" role="img" aria-disabled="true"></i>
++          </button>
++          <button type="button" class="crm-button rich-text-save">
++            <i class="crm-i fa-check" role="img" aria-disabled="true"></i>
++          </button>
++        </div>
++        <div class="rich-text-preview" tabindex="0"></div>
++      `;
++
++      // reappend the child input
++      this.append(this.input);
++
++      this.toolbar = this.querySelector('.rich-text-toolbar');
++      this.cancelButton = this.querySelector('.rich-text-cancel');
++      this.saveButton = this.querySelector('.rich-text-save');
++      this.preview = this.querySelector('.rich-text-preview');
++
++      // add translated text
++      this.cancelButton.append(ts('Cancel'));
++      this.saveButton.append(ts('Save'));
++      this.preview.title = ts('Click to edit');
++
++      // (re)load any content
++      this.renderPreview();
++
++      // open the editor when click/type on preview
++      this.preview.onclick = (e) => {
++        e.preventDefault();
++        this.openEditor();
++      };
++      this.preview.onkeystroke = () => {
++        e.preventDefault();
++        this.openEditor();
++      };
++      // close the editor with the buttons
++      this.cancelButton.onclick = () => this.closeEditor();
++      this.saveButton.onclick = () => this.saveAndCloseEditor();
++
++      // load token picker if requested
++      if (this.hasAttribute('token-picker')) {
++        this.loadTokenPicker();
++      }
++    }
++
++    renderPreview() {
++      // if no content set, show an edit icon instead
++      this.preview.innerHTML = this.value.length ? this.value : '<i class="crm-i fa-pencil" role="img" aria-label="Edit"></i>';
++    }
++
++    loadTokenPicker() {
++      this.tokenPicker = document.createElement('input');
++      this.tokenPicker.classList.add('rich-text-token-picker', 'form-control', 'crm-auto-width', 'crm-action-menu', 'fa-code', 'collapsible-optgroups');
++
++      this.toolbar.prepend(this.tokenPicker);
++
++      this.tokenPicker.onchange = () => {
++        const token = `[${this.tokenPicker.value}]`;
++        CRM.wysiwyg.insert(this.input, token);
++        CRM.$(this.tokenPicker).select2('val', '');
++      };
++
++      CRM.$(this.tokenPicker).crmSelect2({
++        data: () => this.getTokens(),
++        placeholder: ts('Tokens')
++      });
++    }
++
++    openEditor() {
++      this.setAttribute('editing', true);
++      CRM.wysiwyg.create(this.input);
++      this.preview.style.display = 'none';
++      this.toolbar.style.display = null;
++      this.dispatchEvent(new Event('load'));
++    }
++
++    closeEditor() {
++      CRM.wysiwyg.destroy(this.input);
++      this.input.style.display = 'none';
++      this.toolbar.style.display = 'none';
++      this.preview.style.display = null;
++      this.removeAttribute('editing');
++    }
++
++    saveAndCloseEditor() {
++      this.value = CRM.wysiwyg.getVal(this.input);
++      this.closeEditor();
++      this.dispatchEvent(new Event('change'));
++    }
++
++    getTokens() {
++      if (this.closest('af-gui-editor')) {
++        const afGuiEditor = angular.element(this.closest('af-gui-editor')).controller('afGuiEditor');
++        return {
++          results: afGuiEditor.getTokens(this.hasAttribute('include-submission-tokens'))
++        };
++      }
++      else {
++        throw new Error('civi-rich-text-input[token-picker] doesn\'t know how to get available tokens outside of af-gui-editor context yet');
++      }
++    }
++
++    get value() {
++      return this.input.value;
++    }
++
++    set value(v) {
++      if (!v) {
++        v = '';
++      }
++      this.input.value = v;
++      CRM.wysiwyg.setVal(this.input, v);
++      if (this.preview) {
++        this.renderPreview();
++      }
++    }
++  }
++
++  customElements.define('civi-rich-text-input', CiviRichTextInput);
++
++
+   CRM.wysiwyg = {
+     supportsFileUploads: !!CRM.config.wysisygScriptLocation,
+     create: function(item) {
+@@ -47,28 +197,14 @@
+       CRM.wysiwyg.focus(item);
+     },
+     // Create a "collapsed" textarea that expands into a wysiwyg when clicked
+-    createCollapsed: function(item) {
+-      $(item)
+-        .hide()
+-        .on('blur', function () {
+-          CRM.wysiwyg.destroy(item);
+-          $(item).hide().next('.replace-plain').show().html($(item).val());
+-        })
+-        .on('change', function() {
+-          $(this).next('.replace-plain').html($(this).val());
+-        })
+-        .after('<div class="replace-plain" tabindex="0"></div>');
+-      $(item).next('.replace-plain')
+-        .attr('title', ts('Click to edit'))
+-        .html($(item).val())
+-        .on('click keypress', function (e) {
+-          // Stop browser from opening clicked links
+-          e.preventDefault();
+-          $(item).show().next('.replace-plain').hide();
+-          CRM.wysiwyg.create(item).then(() => {
+-            CRM.wysiwyg.focus(item);
+-          });
+-        });
++    createCollapsed: (item) => {
++      const customInput = document.createElement('civi-rich-text-input');
++      // use the pre-existing textarea (preserve name etc) for the custom element
++      customInput.input = item;
++      customInput.input.style.display = 'none';
++      // replace the pre-existing textarea with our custom element
++      item.replaceWith(customInput);
+     }
+   };
++
+ })(CRM.$, CRM._);
