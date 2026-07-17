@@ -109,30 +109,6 @@
   tags: upgrade-civi-core
 
 - block:
-  - name: Patch PR#35674. Allow regexp on integers in SK. (in 6.16?)
-    patch:
-      src: "{{role_path}}/files/35674.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#35562.  Rich text FB confirmations. (in 6.16)
-    patch:
-      src: "{{role_path}}/files/35562.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
-  - name: Patch PR#35437.  Don't show empty custom fields in workflow messages. (in 6.16)
-    patch:
-      src: "{{role_path}}/files/35437.diff"
-      backup: false
-      basedir: "{{ civiroot }}"
-      strip: 1
-    become: yes
-
 #  - name: Print/merge documents on Grants
 #    patch:
 #      src: "{{role_path}}/files/30321.diff"
@@ -164,9 +140,9 @@
 - block:
   - name: The patch list
     set_fact:
-      patch_dict:
-        Rich text FB confirmations: "https://github.com/civicrm/civicrm-core/pull/35562.diff"
-#      patch_dict: {}
+#      patch_dict:
+#        Rich text FB confirmations: "https://github.com/civicrm/civicrm-core/pull/35562.diff"
+      patch_dict: {}
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] = ({{ patch_dict | to_json }} * {{ site_patch_dict | to_json }})' {{ gitroot }}/composer.json"
@@ -212,7 +188,7 @@
   tags: upgrade-civi-core, upgrade-civi-patches
 
 - name: git push
-  command: "git push{{ ' -u origin upgrade' if upgrade_use_branch else '' }}"
+  command: "git push{{ ' -u origin upgrade --force' if upgrade_use_branch else '' }}"
   args:
     chdir: "{{ webroot }}"
   register: push_result
