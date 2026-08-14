@@ -53,7 +53,7 @@
 #- name: Fake an older version of CiviCRM
 #  set_fact:
 #    civi_ver:
-#      content: "6.14.2"
+#      content: "6.16.5"
 #  tags: upgrade-civi-core
 
 # https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
@@ -116,6 +116,13 @@
 #      basedir: "{{ civiroot }}"
 #      strip: 1
 #    become: yes
+  - name: ext_repo_download setting
+    patch:
+      src: "{{role_path}}/files/ext_repo_download.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
 
   - name: Patch VERP for Delta
     patch:
@@ -140,9 +147,9 @@
 - block:
   - name: The patch list
     set_fact:
-#      patch_dict:
-#        Rich text FB confirmations: "https://github.com/civicrm/civicrm-core/pull/35562.diff"
-      patch_dict: {}
+      patch_dict:
+        ext_repo_download: "https://github.com/MegaphoneJon/civicrm-core/commit/c7b17e2d26764ad1e9dc98a8db6f9615877717b4.diff"
+#      patch_dict: {}
 
   - name: Add patches to Composer
     shell: "jq --indent 4 '.extra.patches[\"civicrm/civicrm-core\"] = ({{ patch_dict | to_json }} * {{ site_patch_dict | to_json }})' {{ gitroot }}/composer.json"

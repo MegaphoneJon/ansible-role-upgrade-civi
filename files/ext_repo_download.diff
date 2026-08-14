@@ -1,0 +1,164 @@
+diff --git a/CRM/Admin/Form/Extensions.php b/CRM/Admin/Form/Extensions.php
+index 3d455bfe4d..387d4a8160 100644
+--- a/CRM/Admin/Form/Extensions.php
++++ b/CRM/Admin/Form/Extensions.php
+@@ -90,7 +90,7 @@ class CRM_Admin_Form_Extensions extends CRM_Admin_Form {
+         break;
+ 
+       case CRM_Core_Action::UPDATE:
+-        if (!CRM_Extension_System::singleton()->getBrowser()->isEnabled()) {
++        if (!CRM_Extension_System::singleton()->getBrowser()->isEnabled() || !CRM_Extension_System::singleton()->getDownloader()->isEnabled()) {
+           CRM_Core_Error::statusBounce(ts('The system administrator has disabled this feature.'));
+         }
+         $info = CRM_Extension_System::singleton()->getBrowser()->getExtension($this->_key);
+diff --git a/CRM/Admin/Page/Extensions.php b/CRM/Admin/Page/Extensions.php
+index 6d6e997d99..66f25bf26d 100644
+--- a/CRM/Admin/Page/Extensions.php
++++ b/CRM/Admin/Page/Extensions.php
+@@ -272,7 +272,8 @@ class CRM_Admin_Page_Extensions extends CRM_Core_Page_Basic {
+       if (isset($localExtensionRows[$info->key])) {
+         if (array_key_exists('version', $localExtensionRows[$info->key])) {
+           if (version_compare($localExtensionRows[$info->key]['version'] ?? '', $info->version, '<')) {
+-            $row['upgradelink'] = $mapper->getUpgradeLink($remoteExtensions[$info->key], $localExtensionRows[$info->key], CRM_Extension_System::singleton()->getDownloader()->extensionDirectoryWritable());
++            $downloader = CRM_Extension_System::singleton()->getDownloader();
++            $row['upgradelink'] = $mapper->getUpgradeLink($remoteExtensions[$info->key], $localExtensionRows[$info->key], $downloader->isEnabled() && $downloader->extensionDirectoryWritable());
+           }
+         }
+       }
+diff --git a/CRM/Extension/Downloader.php b/CRM/Extension/Downloader.php
+index 8ade0ec97a..f6de948300 100644
+--- a/CRM/Extension/Downloader.php
++++ b/CRM/Extension/Downloader.php
+@@ -79,6 +79,22 @@ class CRM_Extension_Downloader {
+     return ($this->containerDir && is_dir($this->containerDir) && is_writable($this->containerDir));
+   }
+ 
++  /**
++   * Determine whether the system policy allows downloading extensions.
++   *
++   * This is a reflection of *policy* and *intent*; it does not indicate whether
++   * a download will actually *work*. For that, see checkRequirements().
++   *
++   * Note this is independent of CRM_Extension_Browser::isEnabled(), which governs
++   * whether the system checks for available extensions/updates. It is possible to
++   * allow checking for updates (ext_repo_url) while disallowing downloads (ext_repo_download).
++   *
++   * @return bool
++   */
++  public function isEnabled(): bool {
++    return (bool) \Civi::settings()->get('ext_repo_download');
++  }
++
+   /**
+    * Determine whether downloading is supported.
+    *
+@@ -90,6 +106,13 @@ class CRM_Extension_Downloader {
+   public function checkRequirements($extensionInfo = NULL) {
+     $errors = [];
+ 
++    if (!$this->isEnabled()) {
++      $errors[] = [
++        'title' => ts('Downloads Disabled'),
++        'message' => ts('The system administrator has disabled extension downloads.'),
++      ];
++    }
++
+     if (!$this->containerDir || !is_dir($this->containerDir) || !is_writable($this->containerDir)) {
+       $civicrmDestination = urlencode(CRM_Utils_System::url('civicrm/admin/extensions', 'reset=1'));
+       $url = CRM_Utils_System::url('civicrm/admin/setting/path', "reset=1&civicrmDestination={$civicrmDestination}");
+diff --git a/CRM/Extension/Mapper.php b/CRM/Extension/Mapper.php
+index 0f104d0ad0..ce2364e257 100644
+--- a/CRM/Extension/Mapper.php
++++ b/CRM/Extension/Mapper.php
+@@ -569,13 +569,15 @@ class CRM_Extension_Mapper {
+    *
+    * @param CRM_Extension_Info $remoteExtensionInfo
+    * @param array $localExtensionInfo
+-   * @param bool $extensionDirectoryWritable
++   * @param bool $canDownload
++   *   Whether the system is currently able to download and install the upgrade
++   *   (e.g. the extension directory is writable and downloads are not disabled).
+    *
+    * @return string
+    */
+-  public function getUpgradeLink($remoteExtensionInfo, $localExtensionInfo, $extensionDirectoryWritable) {
++  public function getUpgradeLink($remoteExtensionInfo, $localExtensionInfo, $canDownload) {
+     if (!empty($remoteExtensionInfo) && version_compare($localExtensionInfo['version'] ?? '', $remoteExtensionInfo->version, '<')) {
+-      if ($extensionDirectoryWritable) {
++      if ($canDownload) {
+         return ts('Version %1 is installed. <a %2>Upgrade to version %3</a>.', [
+           1 => $localExtensionInfo['version'],
+           2 => 'href="' . CRM_Utils_System::url('civicrm/admin/extensions', "action=update&id={$localExtensionInfo['key']}&key={$localExtensionInfo['key']}") . '"',
+diff --git a/CRM/Extension/QueueTasks.php b/CRM/Extension/QueueTasks.php
+index 12cab9378e..3e8372c80f 100644
+--- a/CRM/Extension/QueueTasks.php
++++ b/CRM/Extension/QueueTasks.php
+@@ -36,6 +36,11 @@ class CRM_Extension_QueueTasks {
+     // which should in turn source extension download urls from a trusted directory URL
+     // TODO: keep track of the trust chain so we can verify the source one last time here
+     $downloader = CRM_Extension_System::singleton()->getDownloader();
++    // The GUI already blocks this path when downloads are disabled
++    // but we need this because of cv.
++    if (!$downloader->isEnabled()) {
++      throw new CRM_Extension_Exception('The system administrator has disabled extension downloads.');
++    }
+     if (!$downloader->fetch($url, $zipFile)) {
+       throw new CRM_Extension_Exception("Failed to download: $url");
+     }
+diff --git a/CRM/Utils/Check/Component/Env.php b/CRM/Utils/Check/Component/Env.php
+index 5392e494db..8ab72ff001 100644
+--- a/CRM/Utils/Check/Component/Env.php
++++ b/CRM/Utils/Check/Component/Env.php
+@@ -630,7 +630,8 @@ class CRM_Utils_Check_Component_Env extends CRM_Utils_Check_Component {
+             ]);
+           }
+           elseif (!empty($remotes[$key]) && version_compare($row['version'], $remotes[$key]->version, '<')) {
+-            $updates[] = $row['label'] . ': ' . $mapper->getUpgradeLink($remotes[$key], $row, CRM_Extension_System::singleton()->getDownloader()->extensionDirectoryWritable());
++            $downloader = CRM_Extension_System::singleton()->getDownloader();
++            $updates[] = $row['label'] . ': ' . $mapper->getUpgradeLink($remotes[$key], $row, $downloader->isEnabled() && $downloader->extensionDirectoryWritable());
+           }
+           else {
+             if (empty($row['label'])) {
+diff --git a/settings/Extension.boot.setting.php b/settings/Extension.boot.setting.php
+index f685dd3807..5ad9de06f3 100644
+--- a/settings/Extension.boot.setting.php
++++ b/settings/Extension.boot.setting.php
+@@ -35,6 +35,19 @@ return [
+     'is_domain' => 1,
+     'is_contact' => 0,
+   ],
++  'ext_repo_download' => [
++    'group_name' => 'Extension Preferences',
++    'group' => 'ext',
++    'name' => 'ext_repo_download',
++    'type' => 'Boolean',
++    'html_type' => 'toggle',
++    'default' => TRUE,
++    'add' => '6.18',
++    'title' => ts('Enable Extension Downloads'),
++    'is_domain' => 1,
++    'is_contact' => 0,
++    'description' => ts('Allow downloading and installing/upgrading extensions through the web UI and API. Unlike "Extension Repo URL", this does not affect the ability to check for available extensions and updates -- it only controls whether they can be downloaded.'),
++  ],
+   'ext_max_depth' => [
+     'bootstrap_comment' => 'This is a boot setting which may be loaded during bootstrap. Defaults are loaded via SettingsBag::getSystemDefaults().',
+     'group_name' => 'Extension Preferences',
+diff --git a/templates/CRM/common/civicrm.settings.php.template b/templates/CRM/common/civicrm.settings.php.template
+index d8bfe6d226..ef85122a89 100644
+--- a/templates/CRM/common/civicrm.settings.php.template
++++ b/templates/CRM/common/civicrm.settings.php.template
+@@ -281,9 +281,13 @@ if (!defined('CIVICRM_DEDUPE_OPTIMIZER')) {
+  // Disable display of Community Messages on home dashboard
+  // $civicrm_setting['domain']['communityMessagesUrl'] = false;
+ 
+- // Disable automatic download / installation of extensions
++ // Disable checking for available extensions and updates (also prevents downloading/installing them)
+  // $civicrm_setting['domain']['ext_repo_url'] = false;
+ 
++ // Disable downloading / installing extensions through the web UI and API, while still allowing
++ // checks for available extensions and updates (requires ext_repo_url to remain enabled)
++ // $civicrm_setting['domain']['ext_repo_download'] = false;
++
+  // set triggers to be managed offline per CRM-18212
+  // $civicrm_setting['domain']['logging_no_trigger_permission'] = 1;
+ 
