@@ -1,0 +1,14 @@
+diff --git a/CRM/Contribute/Form/ContributionRecur.php b/CRM/Contribute/Form/ContributionRecur.php
+index 8adf529a58f..aea11cafd87 100644
+--- a/CRM/Contribute/Form/ContributionRecur.php
++++ b/CRM/Contribute/Form/ContributionRecur.php
+@@ -252,6 +252,9 @@ protected function getMembershipID(): ?int {
+           $this->_mid = $membership['id'];
+         }
+       }
++      else {
++        $this->_mid = $this->lookup('Membership', 'id');
++      }
+     }
+     return $this->_mid;
+   }

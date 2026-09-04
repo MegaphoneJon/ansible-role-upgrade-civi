@@ -1,0 +1,85 @@
+diff --git a/CRM/Civirules/Utils/PreData.php b/CRM/Civirules/Utils/PreData.php
+index 010451d2..b4f3ac1f 100644
+--- a/CRM/Civirules/Utils/PreData.php
++++ b/CRM/Civirules/Utils/PreData.php
+@@ -126,7 +126,7 @@ class CRM_Civirules_Utils_PreData {
+     $config = \Civi\CiviRules\Config\ConfigContainer::getInstance();
+     $custom_group = $config->getCustomGroupById($groupID);
+     $entity = CRM_Core_BAO_CustomGroup::getEntityFromExtends($custom_group['extends']);
+-    $data = [];
++    $data = self::$preData[$entity][$entityID][$eventID] ?? [];
+     if (!isset(self::$preData[$entity][$entityID][$eventID])) {
+       try {
+         $data = civicrm_api3($entity, 'getsingle', ['id' => $entityID]);
+diff --git a/CRM/CivirulesPostTrigger/GroupContact.php b/CRM/CivirulesPostTrigger/GroupContact.php
+index 5bcdb14e..e0bd219b 100644
+--- a/CRM/CivirulesPostTrigger/GroupContact.php
++++ b/CRM/CivirulesPostTrigger/GroupContact.php
+@@ -31,6 +31,23 @@ class CRM_CivirulesPostTrigger_GroupContact extends CRM_Civirules_Trigger_Post {
+     return 'CRM_Contact_DAO_GroupContact';
+   }
+ 
++
++  public function alterTriggerData(CRM_Civirules_TriggerData_TriggerData &$triggerData) {
++    try {
++      $dataFromPostHook = $triggerData->getEntityData('GroupContact');
++      if (!isset($dataFromPostHook['contact_id']) || !isset($dataFromPostHook['group_id'])) {
++        $dataInDatabase = civicrm_api3('GroupContact', 'getsingle', array('id' => $dataFromPostHook['id']));
++        // Merge both arrays preserving the data in the posthook.
++        $newData = array_merge($dataInDatabase, $dataFromPostHook);
++        $triggerData->setEntityData('GroupContact', $newData);
++      }
++    } catch (Exception $e) {
++      // Do nothing. There could be an exception when the contribution does not exists in the database anymore.
++    }
++
++    parent::alterTriggerData($triggerData);
++  }
++
+   /**
+    * Trigger a rule for this trigger
+    *
+@@ -45,10 +62,11 @@ class CRM_CivirulesPostTrigger_GroupContact extends CRM_Civirules_Trigger_Post {
+     // So check with which signature we are dealing.
+     if (is_object($objectRef)) {
+       // We are dealing with the objectRef is an instance of CRM_Contact_DAO_GroupContact.
+-      $group = civicrm_api3('Group', 'getsingle', ['id' => $objectRef->group_id]);
++      $triggerData = $this->getTriggerDataFromPost($op, $objectName, $objectId, $objectRef, $eventID);
++      $groupContactData = $triggerData->getEntityData('GroupContact');
++      $group = civicrm_api3('Group', 'getsingle', ['id' => $groupContactData['group_id']]);
+       $data = [];
+       CRM_Core_DAO::storeValues($objectRef, $data);
+-      $triggerData = $this->getTriggerDataFromPost($op, $objectName, $objectId, $data, $eventID);
+       $triggerData->setEntityData('Group', $group);
+       $this->setTriggerData($triggerData);
+       parent::triggerTrigger($op, $objectName, $objectId, $objectRef, $eventID);
+@@ -69,5 +87,4 @@ class CRM_CivirulesPostTrigger_GroupContact extends CRM_Civirules_Trigger_Post {
+       }
+     }
+   }
+-
+ }
+diff --git a/civirules.php b/civirules.php
+index ecf65929..2b2a0983 100644
+--- a/civirules.php
++++ b/civirules.php
+@@ -156,6 +156,7 @@ function civirules_use_prehook($op, $objectName, $objectId, &$params) {
+  * @return bool
+  */
+ function civirules_use_posthook($op, $objectName, $objectId, &$objectRef) {
++  return TRUE;
+   if ($objectName == 'GroupContact' && is_array($objectRef)) {
+     // GroupContact with the objectRef as an array of contact ids does
+     // call hook_civicrm_post directly and does not invoke a civicrm event.
+diff --git a/sql/triggers.json b/sql/triggers.json
+index 5db53980..2851230a 100644
+--- a/sql/triggers.json
++++ b/sql/triggers.json
+@@ -110,5 +110,6 @@
+   {"name": "next_scheduled_contribution", "label": "Daily trigger on Next Scheduled (Recurring) Contribution", "object_name": null, "op": null, "class_name": "CRM_CivirulesCronTrigger_NextContributionDate", "cron": "1"},
+   {"name":"membership_activity","label":"Membership Activity","object_name":"Activity","op":"create|edit","class_name":"CRM_CivirulesPostTrigger_MembershipActivity","cron":"0"},
+   {"name":"nocaseactivitysince","label":"No Case Activity Since","object_name":null,"op":null,"class_name":"CRM_CivirulesCronTrigger_NoCaseActivitySince","cron":"1"},
+-  {"name":"afformsubmission_contact","label":"FormBuilder submission","object_name":"AfformSubmission","op":"create|edit","class_name":"CRM_CivirulesPostTrigger_AfformSubmission","cron":"0"}
++  {"name":"afformsubmission_contact","label":"FormBuilder submission","object_name":"AfformSubmission","op":"create|edit","class_name":"CRM_CivirulesPostTrigger_AfformSubmission","cron":"0"},
++  {"name":"changed_group_contact","label":"Group Contact is changed","object_name":"GroupContact","op":"edit","class_name":"CRM_CivirulesPostTrigger_GroupContact","cron":"0"}
+ ]

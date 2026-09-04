@@ -6,6 +6,15 @@
   become: yes
   become_user: "{{ run_as_user }}"
 
+- name: Apply CiviRules patches
+  patch:
+    src: "{{ role_path }}/files/civirules-all-patches.diff"
+    backup: false
+    basedir: "{{ webroot }}/{{ civicrm_custom_path }}/extensions/civirules"
+    strip: 1
+  become: yes
+  when: item.key == "civirules"
+
 - name: git add the plugin
   command: git add -v -A
   args:

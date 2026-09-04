@@ -1,0 +1,188 @@
+diff --git a/ext/afform/admin/ang/afGuiEditor.css b/ext/afform/admin/ang/afGuiEditor.css
+index 0301bd0ecc..869cfd3ff3 100644
+--- a/ext/afform/admin/ang/afGuiEditor.css
++++ b/ext/afform/admin/ang/afGuiEditor.css
+@@ -477,11 +477,13 @@ body.af-gui-dragging {
+   width: 80px;
+ }
+ 
+-#afGuiEditor .af-gui-field-input-type-radio label.radio {
++#afGuiEditor .af-gui-field-input-type-radio label.radio,
++#afGuiEditor .af-gui-field-input-type-radio label.af-radio-style-columns {
+   font-weight: normal;
+   margin-right: 10px;
+ }
+-#afGuiEditor .af-gui-field-input-type-radio label.radio input[type=radio] {
++#afGuiEditor .af-gui-field-input-type-radio label.radio input[type=radio],
++#afGuiEditor .af-gui-field-input-type-radio label.af-radio-style-columns input[type=radio] {
+   margin: 0;
+ }
+ #afGuiEditor .form-inline:has(label.btn) {
+@@ -490,6 +492,26 @@ body.af-gui-dragging {
+   gap: 4px;
+   align-items: center;
+ }
++#afGuiEditor .form-inline:has(label.af-radio-style-columns) {
++  display: grid;
++  gap: 4px;
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-1) {
++  grid-template-columns: 1fr;
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-2) {
++  grid-template-columns: repeat(2, 1fr);
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-3) {
++  grid-template-columns: repeat(3, 1fr);
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-3-responsive) {
++  grid-template-columns: repeat(auto-fit, minmax(max(12rem, (100% - 8px) / 3), 1fr));
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns) > a.crm-hover-button {
++  grid-column: 1 / -1;
++  justify-self: end;
++}
+ #afGuiEditor label.btn input[type=radio],
+ #afGuiEditor label.btn input[type=checkbox] {
+   position: absolute;
+diff --git a/ext/afform/admin/managed/AfformFieldStyle.mgd.php b/ext/afform/admin/managed/AfformFieldStyle.mgd.php
+index b68c25059a..5dfd3907bf 100644
+--- a/ext/afform/admin/managed/AfformFieldStyle.mgd.php
++++ b/ext/afform/admin/managed/AfformFieldStyle.mgd.php
+@@ -3,7 +3,7 @@
+ use CRM_AfformAdmin_ExtensionUtil as E;
+ 
+ // Option group for Afform field styles
+-return [
++$entities = [
+   [
+     'name' => 'AfformFieldStyle',
+     'entity' => 'OptionGroup',
+@@ -65,3 +65,36 @@ return [
+     ],
+   ],
+ ];
++
++// Radio "columns" styles share a common `af-radio-style-columns` base class (see afCore.css)
++// plus a `af-radio-style-columns-<suffix>` modifier that sets the column behavior.
++$radioColumnStyles = [
++  'RadioColumns1' => ['name' => 'radio_columns_1', 'suffix' => '1', 'label' => E::ts('Single Column')],
++  'RadioColumns2' => ['name' => 'radio_columns_2', 'suffix' => '2', 'label' => E::ts('Two Columns')],
++  'RadioColumns3' => ['name' => 'radio_columns_3', 'suffix' => '3', 'label' => E::ts('Three Columns')],
++  'RadioColumns3Responsive' => ['name' => 'radio_columns_3_responsive', 'suffix' => '3-responsive', 'label' => E::ts('Three Columns (responsive)')],
++];
++foreach ($radioColumnStyles as $entityKey => $style) {
++  $entities[] = [
++    'name' => "AfformFieldStyle:$entityKey",
++    'entity' => 'OptionValue',
++    'cleanup' => 'always',
++    'update' => 'always',
++    'params' => [
++      'version' => 4,
++      'values' => [
++        'option_group_id.name' => 'afform_field_style',
++        'name' => $style['name'],
++        'value' => "af-radio-style-columns af-radio-style-columns-{$style['suffix']}",
++        'label' => $style['label'],
++        'grouping' => 'Radio',
++        'description' => NULL,
++        'is_reserved' => TRUE,
++        'is_active' => TRUE,
++      ],
++      'match' => ['option_group_id', 'name'],
++    ],
++  ];
++}
++
++return $entities;
+diff --git a/ext/afform/core/ang/afCore.css b/ext/afform/core/ang/afCore.css
+index 9e832bd7c0..c81433cc96 100644
+--- a/ext/afform/core/ang/afCore.css
++++ b/ext/afform/core/ang/afCore.css
+@@ -114,6 +114,39 @@ fieldset.af-container.af-layout-inline {
+   gap: 4px;
+ }
+ 
++.crm-af-field:has(label.af-radio-style-columns) {
++  display: grid;
++  align-items: start;
++  gap: 4px;
++}
++
++.crm-af-field:has(label.af-radio-style-columns-1) {
++  grid-template-columns: 1fr;
++}
++
++.crm-af-field:has(label.af-radio-style-columns-2) {
++  grid-template-columns: repeat(2, 1fr);
++}
++
++.crm-af-field:has(label.af-radio-style-columns-3) {
++  grid-template-columns: repeat(3, 1fr);
++}
++
++.crm-af-field:has(label.af-radio-style-columns-3-responsive) {
++  grid-template-columns: repeat(auto-fit, minmax(max(12rem, (100% - 8px) / 3), 1fr));
++}
++
++.crm-af-field:has(label.af-radio-style-columns) > a.crm-hover-button {
++  grid-column: 1 / -1;
++  justify-self: end;
++}
++
++label.af-radio-style-columns {
++  font-weight: normal;
++  cursor: var(--crm-link-hover-cursor, pointer);
++  margin-bottom: 0;
++}
++
+ label.btn input[type=radio],
+ label.btn input[type=checkbox] {
+   position: absolute;
+diff --git a/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css b/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
+index 5ab16268fa..c0fc945083 100644
+--- a/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
++++ b/ext/riverlea/core/org.civicrm.afform_admin-ang/afGuiEditor.css
+@@ -442,11 +442,13 @@ af-gui-container > .af-gui-bar,
+ #afGuiEditor .af-gui-field-input input.crm-form-time {
+   width: 80px;
+ }
+-#afGuiEditor .af-gui-field-input-type-radio label.radio {
++#afGuiEditor .af-gui-field-input-type-radio label.radio,
++#afGuiEditor .af-gui-field-input-type-radio label.af-radio-style-columns {
+   font-weight: normal;
+   margin-right: 10px;
+ }
+-#afGuiEditor .af-gui-field-input-type-radio label.radio input[type=radio] {
++#afGuiEditor .af-gui-field-input-type-radio label.radio input[type=radio],
++#afGuiEditor .af-gui-field-input-type-radio label.af-radio-style-columns input[type=radio] {
+   margin: 0;
+ }
+ #afGuiEditor .form-inline:has(label.btn) {
+@@ -455,6 +457,26 @@ af-gui-container > .af-gui-bar,
+   gap: 4px;
+   align-items: center;
+ }
++#afGuiEditor .form-inline:has(label.af-radio-style-columns) {
++  display: grid;
++  gap: 4px;
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-1) {
++  grid-template-columns: 1fr;
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-2) {
++  grid-template-columns: repeat(2, 1fr);
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-3) {
++  grid-template-columns: repeat(3, 1fr);
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns-3-responsive) {
++  grid-template-columns: repeat(auto-fit, minmax(max(12rem, (100% - 8px) / 3), 1fr));
++}
++#afGuiEditor .form-inline:has(label.af-radio-style-columns) > a.crm-hover-button {
++  grid-column: 1 / -1;
++  justify-self: end;
++}
+ #afGuiEditor label.btn input[type=radio],
+ #afGuiEditor label.btn input[type=checkbox] {
+   position: absolute;

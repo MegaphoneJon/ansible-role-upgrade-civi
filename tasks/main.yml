@@ -143,6 +143,22 @@
 #      basedir: "{{ civiroot }}"
 #      strip: 1
 #    become: yes
+  - name: PR 36626 - radio button afform styles
+    patch:
+      src: "{{role_path}}/files/36626.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
+  - name: PR 36575 - detect membership ID correctly on contribution recur cancel
+    patch:
+      src: "{{role_path}}/files/36575.diff"
+      backup: false
+      basedir: "{{ civiroot }}"
+      strip: 1
+    become: yes
+
   - name: ext_repo_download setting
     patch:
       src: "{{role_path}}/files/ext_repo_download.diff"
