@@ -1,4 +1,69 @@
 ---
+- name: Get the latest CiviCRM version number
+  local_action: uri
+  args:
+    url: https://latest.civicrm.org/stable.php
+    return_content: yes
+  run_once: true
+  register: civi_ver
+  become: no
+  tags: upgrade-civi-core, upgrade-civi-patches
+
+#- name: Fake an older version of CiviCRM
+#  set_fact:
+#    civi_ver:
+#      content: "6.16.5"
+#  tags: upgrade-civi-core
+
+# https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
+- name: Download stable versions of Civi
+  local_action: get_url
+  args:
+    url: "https://download.civicrm.org/{{ item }}"
+    dest: "/tmp/{{ item }}"
+  run_once: true
+  with_items:
+    - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
+    - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
+    - "civicrm-{{ civi_ver.content }}-wordpress.zip"
+  become: no
+  tags: upgrade-civi-core
+
+- name: check installed CiviCRM version
+  xml:
+    path: "{{ civiroot }}/xml/version.xml"
+    xpath: /version/version_no
+    content: text
+  register: version_xml
+  changed_when: false
+  tags: upgrade-civi-core
+
+- name: Get a list of extensions that need updating
+  command: "cv ext:list --upgrade=available --filter-status=* --filter-ready=* --out=json --columns=key,upgradeVersion"
+  args:
+    chdir: "{{ webroot }}"
+  register: extensions
+  changed_when: false
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
+  tags: upgrade-extensions, upgrade-extensions-list
+
+- name: Initialize forced_ext_upgrades
+  set_fact:
+    forced_ext_upgrades: []
+  tags: upgrade-extensions
+
+- debug:
+    var: extensions.stdout
+  when: extensions.stdout is defined and extensions.stdout != "null"
+  tags: upgrade-extensions-list, upgrade-extensions
+
+- name: Skip sites with no updates to install
+  meta: end_host
+  when: not((extensions.stdout is defined and extensions.stdout|from_json|count > 0 ) or (version_xml is defined and version_xml.matches[0].version_no != civi_ver.content))
+  tags: upgrade-extensions, upgrade-civi-core, upgrade-civi-patches, upgrade-extensions-list
+
 - name: Ensure file owner/perms are correct
   file:
     path: "{{ webroot }}"
@@ -40,44 +105,6 @@
   changed_when: FALSE
   tags: upgrade-extensions
 
-- name: Get the latest CiviCRM version number
-  local_action: uri
-  args:
-    url: https://latest.civicrm.org/stable.php
-    return_content: yes
-  run_once: true
-  register: civi_ver
-  become: no
-  tags: upgrade-civi-core, upgrade-civi-patches
-
-#- name: Fake an older version of CiviCRM
-#  set_fact:
-#    civi_ver:
-#      content: "6.16.5"
-#  tags: upgrade-civi-core
-
-# https://download.civicrm.org/latest has stable version names, but I want to know whether I already have the same version already, so I do this version-specific approach.
-- name: Download stable versions of Civi
-  local_action: get_url
-  args:
-    url: "https://download.civicrm.org/{{ item }}"
-    dest: "/tmp/{{ item }}"
-  run_once: true
-  with_items:
-    - "civicrm-{{ civi_ver.content }}-drupal.tar.gz"
-    - "civicrm-{{ civi_ver.content }}-backdrop.tar.gz"
-    - "civicrm-{{ civi_ver.content }}-wordpress.zip"
-  become: no
-  tags: upgrade-civi-core
-
-- name: check installed CiviCRM version
-  xml:
-    path: "{{ civiroot }}/xml/version.xml"
-    xpath: /version/version_no
-    content: text
-  register: version_xml
-  changed_when: false
-  tags: upgrade-civi-core
 
 # FIXME: We do this even when the version's not incremented because of the patches below.
 # But maybe it's OK not to? The patching is supposedly idempotent.
@@ -206,26 +233,6 @@
   failed_when: not(push_result.rc == 0)
   tags: upgrade-civi-core, upgrade-civi-patches
 
-- name: Get a list of extensions that need updating
-  command: "cv ext:list --upgrade=available --filter-status=* --filter-ready=* --out=json --columns=key,upgradeVersion"
-  args:
-    chdir: "{{ webroot }}"
-  register: extensions
-  changed_when: false
-  become: yes
-  become_user: "{{ run_as_user }}"
-  when: contract_type is search("Civi Maintenance") and civicrm == 'Yes'
-  tags: upgrade-extensions, upgrade-extensions-list
-
-- name: Initialize forced_ext_upgrades
-  set_fact:
-    forced_ext_upgrades: []
-  tags: upgrade-extensions
-
-- debug:
-    var: extensions.stdout
-  when: extensions.stdout is defined and extensions.stdout != "null"
-  tags: upgrade-extensions-list
 
 # # Force an extension to be "upgraded" with JSON, e.g.:
 # # [{"key":"org.civicoop.civirules","upgradeVersion":"3.17.1"}]
